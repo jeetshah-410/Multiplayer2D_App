@@ -1,10 +1,9 @@
 ﻿using System.Text;
 using Agora.Rtc;
-using Agora.Util;
 using UnityEngine;
 using UnityEngine.Serialization;
 using UnityEngine.UI;
-using Logger = Agora.Util.Logger;
+using io.agora.rtc.demo;
 
 namespace Agora_RTC_Plugin.API_Example.Examples.Advanced.SetEncryption
 {
@@ -72,9 +71,11 @@ namespace Agora_RTC_Plugin.API_Example.Examples.Advanced.SetEncryption
         private void InitRtcEngine()
         {
             RtcEngine = Agora.Rtc.RtcEngine.CreateAgoraRtcEngine();
-            RtcEngineContext context = new RtcEngineContext(_appID, 0,
-                CHANNEL_PROFILE_TYPE.CHANNEL_PROFILE_LIVE_BROADCASTING,
-                AUDIO_SCENARIO_TYPE.AUDIO_SCENARIO_DEFAULT);
+            RtcEngineContext context = new RtcEngineContext();
+            context.appId = _appID;
+            context.channelProfile = CHANNEL_PROFILE_TYPE.CHANNEL_PROFILE_LIVE_BROADCASTING;
+            context.audioScenario = AUDIO_SCENARIO_TYPE.AUDIO_SCENARIO_DEFAULT;
+            context.areaCode = AREA_CODE.AREA_CODE_GLOB;
             RtcEngine.Initialize(context);
             RtcEngine.InitEventHandler(new UserEventHandler(this));
         }
@@ -145,8 +146,19 @@ namespace Agora_RTC_Plugin.API_Example.Examples.Advanced.SetEncryption
 
             videoSurface.OnTextureSizeModify += (int width, int height) =>
             {
-                float scale = (float)height / (float)width;
-                videoSurface.transform.localScale = new Vector3(-5, 5 * scale, 1);
+                var transform = videoSurface.GetComponent<RectTransform>();
+                if (transform)
+                {
+                    //If render in RawImage. just set rawImage size.
+                    transform.sizeDelta = new Vector2(width / 2, height / 2);
+                    transform.localScale = Vector3.one;
+                }
+                else
+                {
+                    //If render in MeshRenderer, just set localSize with MeshRenderer
+                    float scale = (float)height / (float)width;
+                    videoSurface.transform.localScale = new Vector3(-1, 1, scale);
+                }
                 Debug.Log("OnTextureSizeModify: " + width + "  " + height);
             };
 
@@ -164,10 +176,14 @@ namespace Agora_RTC_Plugin.API_Example.Examples.Advanced.SetEncryption
             }
 
             go.name = goName;
+            var mesh = go.GetComponent<MeshRenderer>();
+            if (mesh != null)
+            {
+                Debug.LogWarning("VideoSureface update shader");
+                mesh.material = new Material(Shader.Find("Unlit/Texture"));
+            }
             // set up transform
             go.transform.Rotate(-90.0f, 0.0f, 0.0f);
-            var yPos = Random.Range(3.0f, 5.0f);
-            var xPos = Random.Range(-2.0f, 2.0f);
             go.transform.position = Vector3.zero;
             go.transform.localScale = new Vector3(0.25f, 0.5f, 0.5f);
 

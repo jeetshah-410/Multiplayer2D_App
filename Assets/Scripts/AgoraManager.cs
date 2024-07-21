@@ -10,16 +10,13 @@ public class AgoraManager : MonoBehaviour
 {
 
     [SerializeField]
-    private string appID = "df89ecd5e1c04fee9fb31ac3c191edd8";
-    public string currentChannel;
-    public string token = "";
+    private string appID = "74d5e50ab6fa4472bfa4adf14b400d0f";
+    public string token = "007eJxTYJibWeYfzti6pV97xkuDDdeaPM+q+4tU+j4TvqdUwZAqfFaBwdwkxTTV1CAxySwt0cTE3CgJSCWmpBmaJJkYGKQYpC28PietIZCRwW6iACMjAwSC+MwMjgUFDAwAwXQdjg==";
     private IRtcEngine rtcEngine;
     public GameObject videoViewPrefab;
     public Transform videoContainer;
     
-    
-
-    private Dictionary<uint, GameObject> videoSurfaces = new();
+    readonly private Dictionary<uint, GameObject> videoSurfaces = new();
 
 
     void Start()
@@ -49,12 +46,11 @@ public class AgoraManager : MonoBehaviour
         ChannelMediaOptions options = new();
         options.autoSubscribeAudio.SetValue(true);
         options.autoSubscribeVideo.SetValue(true);
-        options.channelProfile.SetValue(CHANNEL_PROFILE_TYPE.CHANNEL_PROFILE_COMMUNICATION);
+        options.channelProfile.SetValue(CHANNEL_PROFILE_TYPE.CHANNEL_PROFILE_LIVE_BROADCASTING);
         options.clientRoleType.SetValue(CLIENT_ROLE_TYPE.CLIENT_ROLE_BROADCASTER);
         rtcEngine.JoinChannel(token, channelName, 0, options);
-        currentChannel = channelName;
     }
- 
+    
 
     public void LeaveChannel()
     {
@@ -101,7 +97,6 @@ public class AgoraManager : MonoBehaviour
                  Debug.LogError("Video view prefab is not assigned.");
                  return;
             }
-
             GameObject videoSurface = Instantiate(Manager.videoViewPrefab, Manager.videoContainer);
             videoSurface.AddComponent<VideoSurface>().SetForUser(uid, connection.channelId, VIDEO_SOURCE_TYPE.VIDEO_SOURCE_REMOTE);
             videoSurface.AddComponent<VideoSurface>().SetEnable(true);

@@ -1,9 +1,8 @@
 ﻿using Agora.Rtc;
-using Agora.Util;
 using UnityEngine;
 using UnityEngine.Serialization;
 using UnityEngine.UI;
-using Logger = Agora.Util.Logger;
+using io.agora.rtc.demo;
 
 namespace Agora_RTC_Plugin.API_Example.Examples.Advanced.StartDirectCdnStreaming
 {
@@ -26,8 +25,7 @@ namespace Agora_RTC_Plugin.API_Example.Examples.Advanced.StartDirectCdnStreaming
         [SerializeField]
         private string _channelName = "";
 
-
-        private const string PUBLISH_URL = "rtmp://push.alexmk.name/live/agora_rtc_unity";
+        public InputField InputField;
         public Text LogText;
         internal Logger Log;
         internal IRtcEngine RtcEngine = null;
@@ -39,8 +37,8 @@ namespace Agora_RTC_Plugin.API_Example.Examples.Advanced.StartDirectCdnStreaming
             if (CheckAppId())
             {
                 InitEngine();
+                SetUpUI();
                 SetProfile();
-                StartDirectCdnStreamingCamera();
             }
         }
 
@@ -71,27 +69,38 @@ namespace Agora_RTC_Plugin.API_Example.Examples.Advanced.StartDirectCdnStreaming
         {
             RtcEngine = Agora.Rtc.RtcEngine.CreateAgoraRtcEngine();
             UserEventHandler handler = new UserEventHandler(this);
-            RtcEngineContext context = new RtcEngineContext(_appID, 0,
-                CHANNEL_PROFILE_TYPE.CHANNEL_PROFILE_LIVE_BROADCASTING,
-                AUDIO_SCENARIO_TYPE.AUDIO_SCENARIO_DEFAULT);
+            RtcEngineContext context = new RtcEngineContext();
+            context.appId = _appID;
+            context.channelProfile = CHANNEL_PROFILE_TYPE.CHANNEL_PROFILE_LIVE_BROADCASTING;
+            context.audioScenario = AUDIO_SCENARIO_TYPE.AUDIO_SCENARIO_DEFAULT;
+            context.areaCode = AREA_CODE.AREA_CODE_GLOB;
             RtcEngine.Initialize(context);
-            RtcEngine.InitEventHandler(new UserEventHandler(this));
+            RtcEngine.InitEventHandler(handler);
         }
 
-        private void SetProfile()
+        private void SetUpUI()
         {
-            RtcEngine.EnableAudio();
-            RtcEngine.EnableVideo();
-            RtcEngine.SetChannelProfile(CHANNEL_PROFILE_TYPE.CHANNEL_PROFILE_LIVE_BROADCASTING);
-            RtcEngine.SetClientRole(CLIENT_ROLE_TYPE.CLIENT_ROLE_BROADCASTER);
+            var btn = this.transform.Find("StartButton").GetComponent<Button>();
+            btn.onClick.AddListener(this.OnStartButtonPress);
+
+            btn = this.transform.Find("StopButton").GetComponent<Button>();
+            btn.onClick.AddListener(this.OnStopButtonPress);
         }
 
-        private void StartDirectCdnStreamingCamera()
+        private void OnStartButtonPress()
         {
+            var url = this.InputField.text;
+            if (url == "")
+            {
+                this.Log.UpdateLog("you must input your url first");
+                return;
+            }
+
             DirectCdnStreamingMediaOptions options = new DirectCdnStreamingMediaOptions();
             options.publishMicrophoneTrack.SetValue(true);
             options.publishCameraTrack.SetValue(true);
-           
+
+            RtcEngine.SetDirectCdnStreamingAudioConfiguration(AUDIO_PROFILE_TYPE.AUDIO_PROFILE_DEFAULT);
             RtcEngine.SetDirectCdnStreamingVideoConfiguration(new VideoEncoderConfiguration
             {
                 dimensions = new VideoDimensions { width = 1280, height = 720 },
@@ -100,11 +109,29 @@ namespace Agora_RTC_Plugin.API_Example.Examples.Advanced.StartDirectCdnStreaming
                 minBitrate = -1,
                 degradationPreference = DEGRADATION_PREFERENCE.MAINTAIN_QUALITY,
                 codecType = VIDEO_CODEC_TYPE.VIDEO_CODEC_H264,
-                mirrorMode = VIDEO_MIRROR_MODE_TYPE.VIDEO_MIRROR_MODE_DISABLED
+                mirrorMode = VIDEO_MIRROR_MODE_TYPE.VIDEO_MIRROR_MODE_DISABLED,
+                //do not set orientationMode = ORIENTATION_MODE.ORIENTATION_MODE_ADAPTIVE,
+                //otherwise will return -8 when you call StartDirectCdnStreaming
+                orientationMode = ORIENTATION_MODE.ORIENTATION_MODE_FIXED_LANDSCAPE
             });
-            RtcEngine.StartDirectCdnStreaming(PUBLISH_URL, options);
+            int nRet = RtcEngine.StartDirectCdnStreaming(url, options);
+            this.Log.UpdateLog("StartDirectCdnStreaming: "+ +nRet);
             RtcEngine.StartPreview();
             MakeVideoView(0);
+        }
+
+        private void OnStopButtonPress()
+        {
+            var nRet = RtcEngine.StopDirectCdnStreaming();
+            this.Log.UpdateLog("StopDirectCdnStreaming:" + nRet);
+        }
+
+        private void SetProfile()
+        {
+            RtcEngine.EnableAudio();
+            RtcEngine.EnableVideo();
+            RtcEngine.SetChannelProfile(CHANNEL_PROFILE_TYPE.CHANNEL_PROFILE_LIVE_BROADCASTING);
+            RtcEngine.SetClientRole(CLIENT_ROLE_TYPE.CLIENT_ROLE_BROADCASTER);
         }
 
         private void OnDestroy()
@@ -149,8 +176,19 @@ namespace Agora_RTC_Plugin.API_Example.Examples.Advanced.StartDirectCdnStreaming
 
                 videoSurface.OnTextureSizeModify += (int width, int height) =>
                 {
-                    float scale = (float)height / (float)width;
-                    videoSurface.transform.localScale = new Vector3(-5, 5 * scale, 1);
+                    var transform = videoSurface.GetComponent<RectTransform>();
+                    if (transform)
+                    {
+                        //If render in RawImage. just set rawImage size.
+                        transform.sizeDelta = new Vector2(width / 2, height / 2);
+                        transform.localScale = Vector3.one;
+                    }
+                    else
+                    {
+                        //If render in MeshRenderer, just set localSize with MeshRenderer
+                        float scale = (float)height / (float)width;
+                        videoSurface.transform.localScale = new Vector3(-1, 1, scale);
+                    }
                     Debug.Log("OnTextureSizeModify: " + width + "  " + height);
                 };
 
@@ -169,6 +207,12 @@ namespace Agora_RTC_Plugin.API_Example.Examples.Advanced.StartDirectCdnStreaming
             }
 
             go.name = goName;
+            var mesh = go.GetComponent<MeshRenderer>();
+            if (mesh != null)
+            {
+                Debug.LogWarning("VideoSureface update shader");
+                mesh.material = new Material(Shader.Find("Unlit/Texture"));
+            }
             // set up transform
             go.transform.Rotate(-90.0f, 0.0f, 0.0f);
             float yPos = Random.Range(3.0f, 5.0f);
@@ -282,9 +326,9 @@ namespace Agora_RTC_Plugin.API_Example.Examples.Advanced.StartDirectCdnStreaming
             _startDirectCdnStreaming.Log.UpdateLog("OnConnectionLost ");
         }
 
-        public override void OnDirectCdnStreamingStateChanged(DIRECT_CDN_STREAMING_STATE state, DIRECT_CDN_STREAMING_ERROR error, string message)
+        public override void OnDirectCdnStreamingStateChanged(DIRECT_CDN_STREAMING_STATE state, DIRECT_CDN_STREAMING_REASON reason, string message)
         {
-            _startDirectCdnStreaming.Log.UpdateLog(string.Format("OnDirectCdnStreamingStateChanged state: {0}, error: {1}", state, error));
+            _startDirectCdnStreaming.Log.UpdateLog(string.Format("OnDirectCdnStreamingStateChanged state: {0}, reason: {1}", state, reason));
         }
 
         public override void OnDirectCdnStreamingStats(DirectCdnStreamingStats stats)

@@ -3,12 +3,14 @@ using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.Serialization;
 using Agora.Rtc;
-using Agora.Util;
-using Logger = Agora.Util.Logger;
+ 
+ 
 
 #if UNITY_2018_1_OR_NEWER
 using Unity.Collections;
 #endif
+
+using io.agora.rtc.demo;
 
 namespace Agora_RTC_Plugin.API_Example.Examples.Advanced.CustomCaptureVideo
 {
@@ -38,8 +40,10 @@ namespace Agora_RTC_Plugin.API_Example.Examples.Advanced.CustomCaptureVideo
        
         private Texture2D _texture;
         private Rect _rect;
-        private int i = 0;
+
+#if !UNITY_VISIONOS
         private WebCamTexture _webCameraTexture;
+#endif
         public RawImage RawImage;
         public Vector2 CameraSize = new Vector2(640, 480);
         public int CameraFPS = 15;
@@ -49,7 +53,9 @@ namespace Agora_RTC_Plugin.API_Example.Examples.Advanced.CustomCaptureVideo
         // Use this for initialization
         private void Start()
         {
+
             LoadAssetData();
+#if !UNITY_VISIONOS
             if (CheckAppId())
             {
                 InitCameraDevice();
@@ -58,6 +64,10 @@ namespace Agora_RTC_Plugin.API_Example.Examples.Advanced.CustomCaptureVideo
                 SetExternalVideoSource();
                 JoinChannel();
             }
+#else
+            Log.UpdateLog("Not support WebCamTexture in Vision os");
+#endif
+
         }
 
         private void Update()
@@ -87,7 +97,7 @@ namespace Agora_RTC_Plugin.API_Example.Examples.Advanced.CustomCaptureVideo
 
 #if UNITY_2018_1_OR_NEWER
                 NativeArray<byte> nativeByteArray = _texture.GetRawTextureData<byte>();
-                if (_shareData?.Length != nativeByteArray.Length)
+                if (_shareData == null || _shareData.Length != nativeByteArray.Length)
                 {
                     _shareData = new byte[nativeByteArray.Length];
                 }
@@ -117,9 +127,11 @@ namespace Agora_RTC_Plugin.API_Example.Examples.Advanced.CustomCaptureVideo
         {
             RtcEngine = Agora.Rtc.RtcEngine.CreateAgoraRtcEngine();
             UserEventHandler handler = new UserEventHandler(this);
-            RtcEngineContext context = new RtcEngineContext(_appID, 0,
-                CHANNEL_PROFILE_TYPE.CHANNEL_PROFILE_LIVE_BROADCASTING,
-                AUDIO_SCENARIO_TYPE.AUDIO_SCENARIO_DEFAULT);
+            RtcEngineContext context = new RtcEngineContext();
+            context.appId = _appID;
+            context.channelProfile = CHANNEL_PROFILE_TYPE.CHANNEL_PROFILE_LIVE_BROADCASTING;
+            context.audioScenario = AUDIO_SCENARIO_TYPE.AUDIO_SCENARIO_DEFAULT;
+            context.areaCode = AREA_CODE.AREA_CODE_GLOB;
             RtcEngine.Initialize(context);
             RtcEngine.InitEventHandler(handler);
         }
@@ -135,7 +147,7 @@ namespace Agora_RTC_Plugin.API_Example.Examples.Advanced.CustomCaptureVideo
             RtcEngine.EnableAudio();
             RtcEngine.EnableVideo();
             RtcEngine.SetClientRole(CLIENT_ROLE_TYPE.CLIENT_ROLE_BROADCASTER);
-            RtcEngine.JoinChannel(_token, _channelName);
+            RtcEngine.JoinChannel(_token, _channelName,"",0);
         }
 
         private bool CheckAppId()
@@ -152,19 +164,23 @@ namespace Agora_RTC_Plugin.API_Example.Examples.Advanced.CustomCaptureVideo
 
         private void InitCameraDevice()
         {
+#if !UNITY_VISIONOS
             WebCamDevice[] devices = WebCamTexture.devices;
             _webCameraTexture = new WebCamTexture(devices[0].name, (int)CameraSize.x, (int)CameraSize.y, CameraFPS);
             RawImage.texture = _webCameraTexture;
             _webCameraTexture.Play();
+#endif
         }
 
         private void OnDestroy()
         {
             Debug.Log("OnDestroy");
+#if !UNITY_VISIONOS
             if (_webCameraTexture)
             {
                 _webCameraTexture.Stop();
             }
+#endif
             if (RtcEngine == null) return;
             RtcEngine.InitEventHandler(null);
             RtcEngine.LeaveChannel();
@@ -202,8 +218,19 @@ namespace Agora_RTC_Plugin.API_Example.Examples.Advanced.CustomCaptureVideo
 
                 videoSurface.OnTextureSizeModify += (int width, int height) =>
                 {
-                    float scale = (float)height / (float)width;
-                    videoSurface.transform.localScale = new Vector3(-5, 5 * scale, 1);
+                    var transform = videoSurface.GetComponent<RectTransform>();
+                    if (transform)
+                    {
+                        //If render in RawImage. just set rawImage size.
+                        transform.sizeDelta = new Vector2(width / 2, height / 2);
+                        transform.localScale = Vector3.one;
+                    }
+                    else
+                    {
+                        //If render in MeshRenderer, just set localSize with MeshRenderer
+                        float scale = (float)height / (float)width;
+                        videoSurface.transform.localScale = new Vector3(-1, 1, scale);
+                    }
                     Debug.Log("OnTextureSizeModify: " + width + "  " + height);
                 };
 
@@ -222,6 +249,12 @@ namespace Agora_RTC_Plugin.API_Example.Examples.Advanced.CustomCaptureVideo
             }
 
             go.name = goName;
+            var mesh = go.GetComponent<MeshRenderer>();
+            if (mesh != null)
+            {
+                Debug.LogWarning("VideoSureface update shader");
+                mesh.material = new Material(Shader.Find("Unlit/Texture"));
+            }
             // set up transform
             go.transform.Rotate(-90.0f, 0.0f, 0.0f);
             go.transform.position = Vector3.zero;
@@ -317,7 +350,7 @@ namespace Agora_RTC_Plugin.API_Example.Examples.Advanced.CustomCaptureVideo
         }
 
         public override void OnClientRoleChanged(RtcConnection connection, CLIENT_ROLE_TYPE oldRole,
-            CLIENT_ROLE_TYPE newRole)
+            CLIENT_ROLE_TYPE newRole, ClientRoleOptions newRoleOptions)
         {
             _customCaptureVideo.Log.UpdateLog("OnClientRoleChanged");
         }

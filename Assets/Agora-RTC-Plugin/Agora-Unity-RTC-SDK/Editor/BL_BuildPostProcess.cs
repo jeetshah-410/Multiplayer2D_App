@@ -1,38 +1,52 @@
+#define AGORA_RTC
+
+
 using System.Collections.Generic;
 using System.IO;
 using UnityEditor;
 using UnityEditor.Callbacks;
-
-#if UNITY_IOS
+#if UNITY_IOS || UNITY_VISIONOS
 using UnityEditor.iOS.Xcode;
 using UnityEditor.iOS.Xcode.Extensions;
 #endif
-
 using UnityEngine;
 
-public class BL_BuildPostProcess
+#if AGORA_RTC
+namespace Agora.Rtc
+#else
+namespace Agora.Rtm
+#endif
 {
-    [PostProcessBuild]
-    public static void OnPostprocessBuild(BuildTarget buildTarget, string path)
+    public class BL_BuildPostProcess
     {
-        if (buildTarget == BuildTarget.iOS)
+        [PostProcessBuild]
+        public static void OnPostprocessBuild(BuildTarget buildTarget, string path)
         {
+            if (buildTarget == BuildTarget.iOS)
+            {
 #if UNITY_IOS
-            LinkLibraries(path);
-            UpdatePermission(path + "/Info.plist");
+                LinkLibraries(path);
+                UpdatePermission(path + "/Info.plist");
+#endif
+            }
+
+#if UNITY_VISIONOS
+            if (buildTarget == BuildTarget.VisionOS)
+            {
+                UpdatePermission(path + "/Info.plist");
+            }
 #endif
         }
-    }
 
-    //public static void DisableBitcode(string projPath)
-    //{
-    //    PBXProject proj = new PBXProject();
-    //    proj.ReadFromString(File.ReadAllText(projPath));
 
-//    string target = GetTargetGuid(proj);
-//    proj.SetBuildProperty(target, "ENABLE_BITCODE", "false");
-//    File.WriteAllText(projPath, proj.WriteToString());
-//}
+        //public static void DisableBitcode(string projPath)
+        //{
+        //    PBXProject proj = new PBXProject();
+        //    proj.ReadFromString(File.ReadAllText(projPath));
+        //    string target = GetTargetGuid(proj);
+        //    proj.SetBuildProperty(target, "ENABLE_BITCODE", "false");
+        //    File.WriteAllText(projPath, proj.WriteToString());
+        //}
 
 #if UNITY_IOS
     static string GetTargetGuid(PBXProject proj)
@@ -89,19 +103,25 @@ public class BL_BuildPostProcess
         // done, write to the project file
         File.WriteAllText(projPath, proj.WriteToString());
     }
+#endif
 
+
+#if UNITY_VISIONOS || UNITY_IOS
     static void UpdatePermission(string pListPath)
     {
-
         PlistDocument plist = new PlistDocument();
         plist.ReadFromString(File.ReadAllText(pListPath));
         PlistElementDict rootDic = plist.root;
+#if AGORA_RTC
         var cameraPermission = "NSCameraUsageDescription";
         var micPermission = "NSMicrophoneUsageDescription";
         rootDic.SetString(cameraPermission, "Video need to use camera");
         rootDic.SetString(micPermission, "Voice call need to user mic");
-        File.WriteAllText(pListPath, plist.WriteToString());
-    }
 #endif
+        File.WriteAllText(pListPath, plist.WriteToString());
+    }     
+#endif
+
+}
 }
 

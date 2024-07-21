@@ -5,8 +5,8 @@ using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.Serialization;
 using Agora.Rtc;
-using Agora.Util;
-using Logger = Agora.Util.Logger;
+using io.agora.rtc.demo;
+
 
 namespace Agora_RTC_Plugin.API_Example.Examples.Advanced.MetadataSample
 {
@@ -31,9 +31,12 @@ namespace Agora_RTC_Plugin.API_Example.Examples.Advanced.MetadataSample
 
 
         public Text LogText;
+        public InputField InputField;
+        public Button SetMaxSizeButton;
+        public Button SendButton;
         internal Logger Log;
         internal IRtcEngine RtcEngine;
-        internal bool Sending = false;
+
         internal Queue<String> MetadataQueue = new Queue<string>();
 
 
@@ -43,8 +46,6 @@ namespace Agora_RTC_Plugin.API_Example.Examples.Advanced.MetadataSample
             if (CheckAppId())
             {
                 InitEngine();
-                SetupUI();
-                JoinChannel();
             }
         }
 
@@ -67,25 +68,18 @@ namespace Agora_RTC_Plugin.API_Example.Examples.Advanced.MetadataSample
         {
             RtcEngine = Agora.Rtc.RtcEngine.CreateAgoraRtcEngine();
             UserEventHandler handler = new UserEventHandler(this);
-            RtcEngineContext context = new RtcEngineContext(_appID, 0,
-                CHANNEL_PROFILE_TYPE.CHANNEL_PROFILE_LIVE_BROADCASTING,
-                AUDIO_SCENARIO_TYPE.AUDIO_SCENARIO_GAME_STREAMING);
+            RtcEngineContext context = new RtcEngineContext();
+            context.appId = _appID;
+            context.channelProfile = CHANNEL_PROFILE_TYPE.CHANNEL_PROFILE_LIVE_BROADCASTING;
+            context.audioScenario = AUDIO_SCENARIO_TYPE.AUDIO_SCENARIO_DEFAULT;
+            context.areaCode = AREA_CODE.AREA_CODE_GLOB;
             RtcEngine.Initialize(context);
             RtcEngine.InitEventHandler(handler);
-
-            UserMetadataObserver metadataObserver = new UserMetadataObserver(this);
-            RtcEngine.RegisterMediaMetadataObserver(metadataObserver, METADATA_TYPE.VIDEO_METADATA);
         }
 
         private void SetupUI()
         {
-            var ui = this.transform.Find("UI");
 
-            var btn = ui.Find("StartButton").GetComponent<Button>();
-            btn.onClick.AddListener(OnStartButtonPress);
-
-            btn = ui.Find("StopButton").GetComponent<Button>();
-            btn.onClick.AddListener(OnStopButtonPress);
         }
 
         private void JoinChannel()
@@ -93,7 +87,7 @@ namespace Agora_RTC_Plugin.API_Example.Examples.Advanced.MetadataSample
             RtcEngine.SetClientRole(CLIENT_ROLE_TYPE.CLIENT_ROLE_BROADCASTER);
             RtcEngine.EnableAudio();
             RtcEngine.EnableVideo();
-            RtcEngine.JoinChannel(_token, _channelName, "");
+            RtcEngine.JoinChannel(_token, _channelName, "",0);
         }
 
         private void Update()
@@ -101,7 +95,7 @@ namespace Agora_RTC_Plugin.API_Example.Examples.Advanced.MetadataSample
             PermissionHelper.RequestMicrophontPermission();
             lock (MetadataQueue)
             {
-                while(MetadataQueue.Count > 0)
+                while (MetadataQueue.Count > 0)
                 {
                     string metadataString = MetadataQueue.Dequeue();
                     this.Log.UpdateLog(metadataString);
@@ -110,16 +104,46 @@ namespace Agora_RTC_Plugin.API_Example.Examples.Advanced.MetadataSample
         }
 
 
-        private void OnStartButtonPress()
+        public void OnSetMaxSizeButtonPress()
         {
-            this.Sending = true;
-            this.Log.UpdateLog("Sending: true");
+            int size = 128;
+            try
+            {
+                size = int.Parse(this.InputField.text);
+            }
+            catch (Exception e)
+            {
+                this.Log.UpdateLog("Invalid input, please enter an int string");
+                return;
+            }
+
+            int nRet = this.RtcEngine.SetMaxMetadataSize(size);
+            this.Log.UpdateLog("SetMaxMetadataSize:" + nRet);
+            //need RegisterMediaMetadataObserver before JoinChannel
+            UserMetadataObserver metadataObserver = new UserMetadataObserver(this);
+            RtcEngine.RegisterMediaMetadataObserver(metadataObserver, METADATA_TYPE.VIDEO_METADATA);
+            this.Log.UpdateLog("You can send metadata now");
+            this.InputField.text = "";
+            this.SetMaxSizeButton.gameObject.SetActive(false);
+            this.SendButton.gameObject.SetActive(true);
+
+            JoinChannel();
         }
 
-        private void OnStopButtonPress()
+        public void OnSendButtonPress()
         {
-            this.Sending = false;
-            this.Log.UpdateLog("Sending: false");
+            var str = this.InputField.text;
+            if (str != "")
+            {
+                Metadata metadata = new Metadata();
+
+                byte[] strByte = System.Text.Encoding.UTF8.GetBytes(str);
+                metadata.buffer = Marshal.UnsafeAddrOfPinnedArrayElement(strByte, 0);
+                metadata.size = (uint)strByte.Length;
+                int nRet = RtcEngine.SendMetadata(metadata, VIDEO_SOURCE_TYPE.VIDEO_SOURCE_CAMERA);
+                this.Log.UpdateLog("SendMetadata:" + nRet);
+                this.InputField.text = "";
+            }
         }
 
         private void OnDestroy()
@@ -137,7 +161,7 @@ namespace Agora_RTC_Plugin.API_Example.Examples.Advanced.MetadataSample
             return this._channelName;
         }
 
-         #region -- Video Render UI Logic ---
+        #region -- Video Render UI Logic ---
 
         internal static void MakeVideoView(uint uid, string channelId = "")
         {
@@ -162,8 +186,19 @@ namespace Agora_RTC_Plugin.API_Example.Examples.Advanced.MetadataSample
 
             videoSurface.OnTextureSizeModify += (int width, int height) =>
             {
-                float scale = (float)height / (float)width;
-                videoSurface.transform.localScale = new Vector3(-5, 5 * scale, 1);
+                var transform = videoSurface.GetComponent<RectTransform>();
+                if (transform)
+                {
+                    //If render in RawImage. just set rawImage size.
+                    transform.sizeDelta = new Vector2(width / 2, height / 2);
+                    transform.localScale = Vector3.one;
+                }
+                else
+                {
+                    //If render in MeshRenderer, just set localSize with MeshRenderer
+                    float scale = (float)height / (float)width;
+                    videoSurface.transform.localScale = new Vector3(-1, 1, scale);
+                }
                 Debug.Log("OnTextureSizeModify: " + width + "  " + height);
             };
 
@@ -181,6 +216,12 @@ namespace Agora_RTC_Plugin.API_Example.Examples.Advanced.MetadataSample
             }
 
             go.name = goName;
+            var mesh = go.GetComponent<MeshRenderer>();
+            if (mesh != null)
+            {
+                Debug.LogWarning("VideoSureface update shader");
+                mesh.material = new Material(Shader.Find("Unlit/Texture"));
+            }
             // set up transform
             go.transform.Rotate(-90.0f, 0.0f, 0.0f);
             go.transform.position = Vector3.zero;
@@ -280,7 +321,7 @@ namespace Agora_RTC_Plugin.API_Example.Examples.Advanced.MetadataSample
             MetadataSample.DestroyVideoView(0);
         }
 
-        public override void OnClientRoleChanged(RtcConnection connection, CLIENT_ROLE_TYPE oldRole, CLIENT_ROLE_TYPE newRole)
+        public override void OnClientRoleChanged(RtcConnection connection, CLIENT_ROLE_TYPE oldRole, CLIENT_ROLE_TYPE newRole, ClientRoleOptions newRoleOptions)
         {
             _sample.Log.UpdateLog("OnClientRoleChanged");
         }
@@ -315,33 +356,12 @@ namespace Agora_RTC_Plugin.API_Example.Examples.Advanced.MetadataSample
             _sample = sample;
         }
 
-        public override int GetMaxMetadataSize()
-        {
-            return 128;
-        }
-
-        public override bool OnReadyToSendMetadata(ref Metadata metadata, VIDEO_SOURCE_TYPE source_type)
-        {
-            if (this._sample.Sending)
-            {
-                this.tick++;
-                string str = "tick :" + tick;
-                byte[] strByte = System.Text.Encoding.Default.GetBytes(str);
-                Marshal.Copy(strByte, 0, metadata.buffer, strByte.Length);
-                metadata.size = (uint)strByte.Length;
-                Debug.Log("OnReadyToSendMetadata Sended metadatasize:" + metadata.size);
-
-            }
-
-            return this._sample.Sending;
-        }
-
         public override void OnMetadataReceived(Metadata data)
         {
             //this callback not trigger in unity main thread
             byte[] strByte = new byte[data.size];
             Marshal.Copy(data.buffer, strByte, 0, (int)data.size);
-            string str = System.Text.Encoding.Default.GetString(strByte);
+            string str = System.Text.Encoding.UTF8.GetString(strByte);
             var str2 = string.Format("OnMetadataReceived uid:{0} buffer:{1}", data.uid, str);
             lock (this._sample.MetadataQueue)
             {

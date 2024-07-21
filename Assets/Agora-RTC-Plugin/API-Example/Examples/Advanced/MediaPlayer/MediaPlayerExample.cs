@@ -4,8 +4,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.Serialization;
 using Agora.Rtc;
-using Agora.Util;
-using Logger = Agora.Util.Logger;
+using io.agora.rtc.demo;
 
 namespace Agora_RTC_Plugin.API_Example.Examples.Advanced.MediaPlayer
 {
@@ -36,31 +35,31 @@ namespace Agora_RTC_Plugin.API_Example.Examples.Advanced.MediaPlayer
         private const string MPK_URL = "https://agoracdn.s3.us-west-1.amazonaws.com/videos/Agora.io-Interactions.mp4";
         private const string PRELOAD_URL = "https://agoracdn.s3.us-west-1.amazonaws.com/videos/Agora+Quality+Comparison+Jellyfish.mp4";
 
-        private Button _button1;
-        private Button _button2;
-        private Button _button3;
-        private Button _button4;
-        private Button _button5;
-        private Button _button6;
-        private Button _button7;
-        private Button _button8;
-        private Button _button9;
-        private Toggle _urlToggle;
-        private Toggle _loopToggle;
-        private InputField _inputField;
+        public Button PlayButton;
+        public Button StopButton;
+        public Button PauseButton;
+        public Button ResumeButton;
+        public Button OpenButton;
+        public Button PreloadSrcButton;
+        public Button PlayPreloadButton;
+        public Button StartPublishButton;
+        public Button StopPublishButton;
+        public Toggle UrlToggle;
+        public Toggle LoopToggle;
+        public InputField InputField;
+        public Slider Slider;
+        internal bool isGragged;
        
-
         // Use this for initialization
         private void Start()
         {
             LoadAssetData();
             if (CheckAppId())
             {
-                SetUpUI();
                 EnableUI(false);
                 InitEngine();
+                SetBasicConfiguration();
                 InitMediaPlayer();
-                JoinChannelWithMPK();
             }
         }
 
@@ -71,46 +70,18 @@ namespace Agora_RTC_Plugin.API_Example.Examples.Advanced.MediaPlayer
             PermissionHelper.RequestCameraPermission();
         }
 
-        private void SetUpUI()
-        {
-            _button1 = GameObject.Find("Button1").GetComponent<Button>();
-            _button1.onClick.AddListener(OnPlayButtonPress);
-            _button2 = GameObject.Find("Button2").GetComponent<Button>();
-            _button2.onClick.AddListener(OnStopButtonPress);
-            _button3 = GameObject.Find("Button3").GetComponent<Button>();
-            _button3.onClick.AddListener(OnPauseButtonPress);
-            _button4 = GameObject.Find("Button4").GetComponent<Button>();
-            _button4.onClick.AddListener(OnResumeButtonPress);
-            _button5 = GameObject.Find("Button5").GetComponent<Button>();
-            _button5.onClick.AddListener(OnOpenButtonPress);
-            _button6 = GameObject.Find("Button6").GetComponent<Button>();
-            _button6.onClick.AddListener(OnPreloadSrcButtonClick);
-            _button7 = GameObject.Find("Button7").GetComponent<Button>();
-            _button7.onClick.AddListener(OnPlayPreloadButtonClick);
-            _button8 = GameObject.Find("Button8").GetComponent<Button>();
-            _button8.onClick.AddListener(OnStartPublishButtonClick);
-            _button8.gameObject.SetActive(false);
-            _button9 = GameObject.Find("Button9").GetComponent<Button>();
-            _button9.onClick.AddListener(OnStopPublishButtonClick);
-         
-
-            _urlToggle = GameObject.Find("UrlToggle").GetComponent<Toggle>();
-            _loopToggle = GameObject.Find("LoopToggle").GetComponent<Toggle>();
-            _inputField = GameObject.Find("InputField").GetComponent<InputField>();
-        }
-
         public void EnableUI(bool val)
         {
-            var obj = this.transform.Find("Button1").gameObject;
+            var obj = PlayButton.gameObject;
             obj.SetActive(val);
 
-            obj = this.transform.Find("Button2").gameObject;
+            obj = StopButton.gameObject;
             obj.SetActive(val);
 
-            obj = this.transform.Find("Button3").gameObject;
+            obj = PauseButton.gameObject;
             obj.SetActive(val);
 
-            obj = this.transform.Find("Button4").gameObject;
+            obj = ResumeButton.gameObject;
             obj.SetActive(val);
         }
 
@@ -134,9 +105,11 @@ namespace Agora_RTC_Plugin.API_Example.Examples.Advanced.MediaPlayer
         {
             RtcEngine = Agora.Rtc.RtcEngine.CreateAgoraRtcEngine();
             UserEventHandler handler = new UserEventHandler(this);
-            RtcEngineContext context = new RtcEngineContext(_appID, 0,
-                CHANNEL_PROFILE_TYPE.CHANNEL_PROFILE_LIVE_BROADCASTING,
-                AUDIO_SCENARIO_TYPE.AUDIO_SCENARIO_GAME_STREAMING);
+            RtcEngineContext context = new RtcEngineContext();
+            context.appId = _appID;
+            context.channelProfile = CHANNEL_PROFILE_TYPE.CHANNEL_PROFILE_LIVE_BROADCASTING;
+            context.audioScenario = AUDIO_SCENARIO_TYPE.AUDIO_SCENARIO_DEFAULT;
+            context.areaCode = AREA_CODE.AREA_CODE_GLOB;
             RtcEngine.Initialize(context);
             RtcEngine.InitEventHandler(handler);
             var logFile = Application.persistentDataPath + "/rtc.log";
@@ -158,13 +131,17 @@ namespace Agora_RTC_Plugin.API_Example.Examples.Advanced.MediaPlayer
             this.Log.UpdateLog("playerId id: " + MediaPlayer.GetId());
         }
 
-
-        private void JoinChannelWithMPK()
+        private void SetBasicConfiguration()
         {
             RtcEngine.EnableAudio();
             RtcEngine.EnableVideo();
             RtcEngine.SetClientRole(CLIENT_ROLE_TYPE.CLIENT_ROLE_BROADCASTER);
+        }
 
+        #region -- Button Events ---
+
+        public void JoinChannelWithMPK()
+        {
             ChannelMediaOptions options = new ChannelMediaOptions();
             options.autoSubscribeAudio.SetValue(true);
             options.autoSubscribeVideo.SetValue(true);
@@ -179,7 +156,12 @@ namespace Agora_RTC_Plugin.API_Example.Examples.Advanced.MediaPlayer
             this.Log.UpdateLog("RtcEngineController JoinChannel_MPK returns: " + ret);
         }
 
-        private void OnPlayButtonPress()
+        public void LeaveChannel()
+        {
+            RtcEngine.LeaveChannel();
+        }
+
+        public void OnPlayButtonPress()
         {
             if (this.IsLoop())
             {
@@ -191,49 +173,48 @@ namespace Agora_RTC_Plugin.API_Example.Examples.Advanced.MediaPlayer
             }
             var ret = MediaPlayer.Play();
             this.Log.UpdateLog("Play return" + ret);
-            this.TestMediaPlayer();
         }
 
-        private void OnStopButtonPress()
+        public void OnStopButtonPress()
         {
             var ret = MediaPlayer.Stop();
             this.Log.UpdateLog("Stop return" + ret);
         }
 
-        private void OnPauseButtonPress()
+        public void OnPauseButtonPress()
         {
             var ret = MediaPlayer.Pause();
             this.Log.UpdateLog("Pause return" + ret);
         }
 
-        private void OnResumeButtonPress()
+        public void OnResumeButtonPress()
         {
             var ret = MediaPlayer.Resume();
 
             this.Log.UpdateLog("Resume returns: " + ret);
         }
 
-        private void OnOpenButtonPress()
+        public void OnOpenButtonPress()
         {
             string path = null;
-            if (this._urlToggle.isOn)
+            if (this.UrlToggle.isOn)
             {
-                if (this._inputField.text == "")
+                if (this.InputField.text == "")
                 {
                     path = MPK_URL;
                 }
                 else
                 {
-                    path = this._inputField.text;
+                    path = this.InputField.text;
                 }
             }
             else
             {
 #if UNITY_ANDROID && !UNITY_EDITOR
                 // On Android, the StreamingAssetPath is just accessed by /assets instead of Application.streamingAssetPath
-                path = "/assets/img/MPK.mov";
+                path = "/assets/img/MPK.mp4";
 #else
-                path = Path.Combine(Application.streamingAssetsPath, "img/MPK.mov");
+                path = Path.Combine(Application.streamingAssetsPath, "img/MPK.mp4");
 #endif
             }
             this.Log.UpdateLog("Is opening : " + path);
@@ -241,31 +222,32 @@ namespace Agora_RTC_Plugin.API_Example.Examples.Advanced.MediaPlayer
             this.Log.UpdateLog("Open returns: " + ret);
         }
 
-        private void OnOpenWithCustomSource()
+        public void OnOpenWithCustomSource()
         {
-            var ret = MediaPlayer.OpenWithCustomSource(0, new UserPlayerCustomDataProvider(this));
+            var ret = MediaPlayer.OpenWithCustomSource(0, new UserPlayerCustomDataProvider());
             this.Log.UpdateLog("OpenWithCustomSource" + ret);
         }
 
 
-        private void OnPreloadSrcButtonClick()
+        public void OnPreloadSrcButtonClick()
         {
 
             var nRet = MediaPlayer.PreloadSrc(PRELOAD_URL, 0);
             this.Log.UpdateLog("PreloadSrc: " + nRet);
         }
 
-        private void OnPlayPreloadButtonClick()
+        public void OnPlayPreloadButtonClick()
         {
 
             var nRet = MediaPlayer.PlayPreloadedSrc(PRELOAD_URL);
             this.Log.UpdateLog("PlayPreloadedSrc: " + nRet);
         }
 
-        private void TestMediaPlayer()
+        internal void TestMediaPlayer()
         {
             long duration = 0;
             var ret = MediaPlayer.GetDuration(ref duration);
+            Slider.maxValue = duration;
             Debug.Log("_mediaPlayer.GetDuration returns: " + ret + "duration: " + duration);
 
             long pos = 0;
@@ -286,7 +268,7 @@ namespace Agora_RTC_Plugin.API_Example.Examples.Advanced.MediaPlayer
             Debug.Log("GetPlaySrc:" + MediaPlayer.GetPlaySrc());
         }
 
-        private void OnStartPublishButtonClick()
+        public void OnStartPublishButtonClick()
         {
             var options = new ChannelMediaOptions();
             options.publishMediaPlayerVideoTrack.SetValue(true);
@@ -295,11 +277,11 @@ namespace Agora_RTC_Plugin.API_Example.Examples.Advanced.MediaPlayer
             var nRet = RtcEngine.UpdateChannelMediaOptions(options);
             this.Log.UpdateLog("UpdateChannelMediaOptions: " + nRet);
 
-            _button8.gameObject.SetActive(false);
-            _button9.gameObject.SetActive(true);
+            StartPublishButton.gameObject.SetActive(false);
+            StopPublishButton.gameObject.SetActive(true);
         }
 
-        private void OnStopPublishButtonClick()
+        public void OnStopPublishButtonClick()
         {
             var options = new ChannelMediaOptions();
             options.publishMediaPlayerVideoTrack.SetValue(false);
@@ -310,9 +292,22 @@ namespace Agora_RTC_Plugin.API_Example.Examples.Advanced.MediaPlayer
             var nRet = RtcEngine.UpdateChannelMediaOptions(options);
             this.Log.UpdateLog("UpdateChannelMediaOptions: " + nRet);
 
-            _button8.gameObject.SetActive(true);
-            _button9.gameObject.SetActive(false);
+            StartPublishButton.gameObject.SetActive(true);
+            StopPublishButton.gameObject.SetActive(false);
         }
+
+        public void OnDragging()
+        {
+            isGragged = true;
+        }
+
+        public void OnDragEnd()
+        {
+            MediaPlayer.Seek((long)Slider.value);
+            isGragged = false;
+        }
+
+        #endregion
 
         private void OnDestroy()
         {
@@ -334,7 +329,7 @@ namespace Agora_RTC_Plugin.API_Example.Examples.Advanced.MediaPlayer
 
         internal bool IsLoop()
         {
-            return this._loopToggle.isOn;
+            return this.LoopToggle.isOn;
         }
 
         #region -- Video Render UI Logic ---
@@ -356,8 +351,19 @@ namespace Agora_RTC_Plugin.API_Example.Examples.Advanced.MediaPlayer
 
             videoSurface.OnTextureSizeModify += (int width, int height) =>
             {
-                float scale = (float)height / (float)width;
-                videoSurface.transform.localScale = new Vector3(-5, 5 * scale, 1);
+                var transform = videoSurface.GetComponent<RectTransform>();
+                if (transform)
+                {
+                    //If render in RawImage. just set rawImage size.
+                    transform.sizeDelta = new Vector2(width / 2, height / 2);
+                    transform.localScale = Vector3.one;
+                }
+                else
+                {
+                    //If render in MeshRenderer, just set localSize with MeshRenderer
+                    float scale = (float)height / (float)width;
+                    videoSurface.transform.localScale = new Vector3(-1, 1, scale);
+                }
                 Debug.Log("OnTextureSizeModify: " + width + "  " + height);
             };
         }
@@ -373,6 +379,12 @@ namespace Agora_RTC_Plugin.API_Example.Examples.Advanced.MediaPlayer
             }
 
             go.name = goName;
+            var mesh = go.GetComponent<MeshRenderer>();
+            if (mesh != null)
+            {
+                Debug.LogWarning("VideoSureface update shader");
+                mesh.material = new Material(Shader.Find("Unlit/Texture"));
+            }
             // set up transform
             go.transform.Rotate(-90.0f, 0.0f, 0.0f);
             go.transform.position = Vector3.zero;
@@ -442,15 +454,16 @@ namespace Agora_RTC_Plugin.API_Example.Examples.Advanced.MediaPlayer
             _sample = sample;
         }
 
-        public override void OnPlayerSourceStateChanged(MEDIA_PLAYER_STATE state, MEDIA_PLAYER_ERROR ec)
+        public override void OnPlayerSourceStateChanged(MEDIA_PLAYER_STATE state, MEDIA_PLAYER_REASON reason)
         {
             _sample.Log.UpdateLog(string.Format(
-                "OnPlayerSourceStateChanged state: {0}, ec: {1}, playId: {2}", state, ec, _sample.MediaPlayer.GetId()));
+                "OnPlayerSourceStateChanged state: {0}, ec: {1}, playId: {2}", state, reason, _sample.MediaPlayer.GetId()));
             Debug.Log("OnPlayerSourceStateChanged");
             if (state == MEDIA_PLAYER_STATE.PLAYER_STATE_OPEN_COMPLETED)
             {
                 MediaPlayerExample.MakeVideoView((uint)_sample.MediaPlayer.GetId(), "", VIDEO_SOURCE_TYPE.VIDEO_SOURCE_MEDIA_PLAYER);
                 _sample.EnableUI(true);
+                _sample.TestMediaPlayer();
                 _sample.Log.UpdateLog("Open Complete. Click start to play media");
             }
             else if (state == MEDIA_PLAYER_STATE.PLAYER_STATE_STOPPED)
@@ -468,6 +481,14 @@ namespace Agora_RTC_Plugin.API_Example.Examples.Advanced.MediaPlayer
         public override void OnPreloadEvent(string src, PLAYER_PRELOAD_EVENT @event)
         {
             _sample.Log.UpdateLog(string.Format("OnPreloadEvent src: {0}, @event: {1}", src, @event));
+        }
+
+        public override void OnPositionChanged(long positionMs, long timestampMs)
+        {
+            if (!_sample.isGragged)
+            {
+                _sample.Slider.value = positionMs;
+            }
         }
     }
 
@@ -507,7 +528,7 @@ namespace Agora_RTC_Plugin.API_Example.Examples.Advanced.MediaPlayer
         }
 
         public override void OnClientRoleChanged(RtcConnection connection, CLIENT_ROLE_TYPE oldRole,
-            CLIENT_ROLE_TYPE newRole)
+            CLIENT_ROLE_TYPE newRole, ClientRoleOptions newRoleOptions)
         {
             _sample.Log.UpdateLog("OnClientRoleChanged");
         }
@@ -527,11 +548,9 @@ namespace Agora_RTC_Plugin.API_Example.Examples.Advanced.MediaPlayer
 
     internal class UserPlayerCustomDataProvider : IMediaPlayerCustomDataProvider
     {
-        MediaPlayerExample _sample;
-
-        internal UserPlayerCustomDataProvider(MediaPlayerExample sample)
+        internal UserPlayerCustomDataProvider()
         {
-            _sample = sample;
+            
         }
 
         public override Int64 OnSeek(Int64 offset, int whence)

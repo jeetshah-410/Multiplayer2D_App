@@ -9,11 +9,6 @@
 #import "AgoraRtcEngineKit.h"
 #import "AgoraObjects.h"
 
-#if TARGET_OS_IPHONE
-#import <UIKit/UIKit.h>
-#elif TARGET_OS_MAC
-#import <AppKit/AppKit.h>
-#endif
 
 NS_ASSUME_NONNULL_BEGIN
 @interface AgoraRtcEngineKit(Ex)
@@ -43,7 +38,7 @@ NS_ASSUME_NONNULL_BEGIN
                  connection:(AgoraRtcConnection * _Nonnull)connection
                    delegate:(id<AgoraRtcEngineDelegate> _Nullable)delegate
                mediaOptions:(AgoraRtcChannelMediaOptions* _Nonnull)mediaOptions
-                joinSuccess:(void(^ _Nullable)(NSString* _Nonnull channel, NSUInteger uid, NSInteger elapsed))joinSuccessBlock;
+                joinSuccess:(void(^ _Nullable)(NSString* _Nonnull channel, NSUInteger uid, NSInteger elapsed))joinSuccessBlock NS_SWIFT_NAME(joinChannelEx(byToken:connection:delegate:mediaOptions:joinSuccess:));
 
 /** Joins the channel with a user account.
  *
@@ -85,7 +80,7 @@ NS_ASSUME_NONNULL_BEGIN
                 userAccount:(NSString* _Nonnull)userAccount
                    delegate:(id<AgoraRtcEngineDelegate> _Nullable)delegate
                mediaOptions:(AgoraRtcChannelMediaOptions* _Nonnull)mediaOptions
-                joinSuccess:(void(^ _Nullable)(NSString* _Nonnull channel, NSUInteger uid, NSInteger elapsed))joinSuccessBlock;
+                joinSuccess:(void(^ _Nullable)(NSString* _Nonnull channel, NSUInteger uid, NSInteger elapsed))joinSuccessBlock NS_SWIFT_NAME(joinChannelEx(byToken:channelId:userAccount:delegate:mediaOptions:joinSuccess:));
 
 /**
  *  Updates the channel media options after joining the channel.
@@ -97,7 +92,7 @@ NS_ASSUME_NONNULL_BEGIN
  * - < 0: Failure.
  */
 - (int)updateChannelExWithMediaOptions:(AgoraRtcChannelMediaOptions* _Nonnull)mediaOptions
-                            connection:(AgoraRtcConnection * _Nonnull)connection;
+                            connection:(AgoraRtcConnection * _Nonnull)connection NS_SWIFT_NAME(updateChannelEx(with:connection:));
 
 /**
  * Leaves the channel by connection.
@@ -109,6 +104,60 @@ NS_ASSUME_NONNULL_BEGIN
  * - < 0: Failure.
  */
 - (int)leaveChannelEx:(AgoraRtcConnection * _Nonnull)connection
+    leaveChannelBlock:(void(^ _Nullable)(AgoraChannelStats* _Nonnull stat))leaveChannelBlock NS_SWIFT_NAME(leaveChannelEx(_:leaveChannelBlock:));
+
+/**
+ * Resets the SDK delegate.
+ *
+ * The SDK uses the delegate to inform the app on engine runtime events. All methods defined in the
+ * delegate are optional implementation methods.
+ *
+ * @param delegate The AgoraRtcEngineDelegate protocol.
+ * @param connection The AgoraRtcConnection object.
+ */
+- (int)setDelegateEx:(id<AgoraRtcEngineDelegate> _Nullable)delegate connection:(AgoraRtcConnection * _Nonnull)connection;
+
+/**
+ *Stops or resumes sending the local audio stream with connection.
+ *
+ *@param mute Determines whether to send or stop sending the local audio stream:
+ *- `YES`: Stop sending the local audio stream.
+ *- `NO`: Send the local audio stream.
+ *
+ *@param connection \ref AgoraRtcConnection by channelId and uid combine
+ *
+ *@return
+ *- 0: Success.
+ *- < 0: Failure.
+ */
+- (int)muteLocalAudioStreamEx:(BOOL)mute connection:(AgoraRtcConnection * _Nonnull)connection NS_SWIFT_NAME(muteLocalAudioStreamEx(_:connection:));
+/**
+ *Stops or resumes sending the local video stream with connection.
+ *
+ *@param mute Determines whether to send or stop sending the local video stream:
+ *- `YES`: Stop sending the local video stream.
+ *- `NO`: Send the local video stream.
+ *
+ *@param connection \ref AgoraRtcConnection by channelId and uid combine
+ *
+ *@return
+ *- 0: Success.
+ *- < 0: Failure.
+ */
+- (int)muteLocalVideoStreamEx:(BOOL)mute connection:(AgoraRtcConnection * _Nonnull)connection NS_SWIFT_NAME(muteLocalVideoStreamEx(_:connection:));
+
+/**
+ * Leaves the channel by connection.
+ *
+ * @param connection  {@link AgoraRtcConnection} by channelId and uid combine
+ * @param options The options for leaving the channel. See {@link LeaveChannelOptions}.
+ * @param leaveChannelBlock This callback indicates that a user leaves a channel, and provides the statistics of the call in #AgoraChannelStats.
+ * @return
+ * - 0: Success.
+ * - < 0: Failure.
+ */
+- (int)leaveChannelEx:(AgoraRtcConnection * _Nonnull)connection
+              options:(AgoraLeaveChannelOptions * _Nonnull)options
     leaveChannelBlock:(void(^ _Nullable)(AgoraChannelStats* _Nonnull stat))leaveChannelBlock;
 
 /** Mutes a specified remote user's audio stream.
@@ -125,7 +174,23 @@ NS_ASSUME_NONNULL_BEGIN
  */
 - (int)muteRemoteAudioStreamEx:(NSUInteger)uid
                           mute:(BOOL)mute
-                    connection:(AgoraRtcConnection * _Nonnull)connection;
+                    connection:(AgoraRtcConnection * _Nonnull)connection NS_SWIFT_NAME(muteRemoteAudioStreamEx(_:mute:connection:));
+
+/**
+ *Stops or resumes receiving all remote audio stream with connection.
+ *
+ *@param mute Whether to stop receiving remote audio streams:
+ *- `YES`: Stop receiving any remote audio stream.
+ *- `NO`: Resume receiving all remote audio streams.
+ *
+ *@param connection \ref AgoraRtcConnection by channelId and uid combine
+ *
+ *@return
+ *- 0: Success.
+ *- < 0: Failure.
+ */
+- (int)muteAllRemoteAudioStreamsEx:(BOOL)mute
+                        connection:(AgoraRtcConnection * _Nonnull)connection  NS_SWIFT_NAME(muteAllRemoteAudioStreamsEx(_:connection:));
 
 /**
  * Sets the video encoder configuration.
@@ -145,7 +210,7 @@ NS_ASSUME_NONNULL_BEGIN
  * - < 0: Failure.
  */
 - (int)setVideoEncoderConfigurationEx:(AgoraVideoEncoderConfiguration* _Nonnull)config
-                           connection:(AgoraRtcConnection * _Nonnull)connection;
+                           connection:(AgoraRtcConnection * _Nonnull)connection NS_SWIFT_NAME(setVideoEncoderConfigurationEx(_:connection:));
 
 /** Binds the remote user to the video display window, that is, sets the view for the user of the specified uid.
 *
@@ -158,7 +223,7 @@ NS_ASSUME_NONNULL_BEGIN
 * - <0: Failure.
  */
 - (int)setupRemoteVideoEx:(AgoraRtcVideoCanvas* _Nonnull)remote
-               connection:(AgoraRtcConnection * _Nonnull)connection;
+               connection:(AgoraRtcConnection * _Nonnull)connection NS_SWIFT_NAME(setupRemoteVideoEx(_:connection:));
 
 /** Configures the remote video display mode. The application can call this method multiple times to change the display mode.
 *
@@ -174,7 +239,7 @@ NS_ASSUME_NONNULL_BEGIN
 - (int)setRemoteRenderModeEx:(NSUInteger)uid
                         mode:(AgoraVideoRenderMode)mode
                       mirror:(AgoraVideoMirrorMode)mirror
-                  connection:(AgoraRtcConnection * _Nonnull)connection;
+                  connection:(AgoraRtcConnection * _Nonnull)connection NS_SWIFT_NAME(setRemoteRenderModeEx(_:mode:mirror:connection:));
 
 /**
  * Stops or resumes receiving the video stream of a specified user.
@@ -194,26 +259,42 @@ NS_ASSUME_NONNULL_BEGIN
  */
 - (int)muteRemoteVideoStreamEx:(NSUInteger)uid
                           mute:(BOOL)mute
-                    connection:(AgoraRtcConnection * _Nonnull)connection;
+                    connection:(AgoraRtcConnection * _Nonnull)connection NS_SWIFT_NAME(muteRemoteVideoStreamEx(_:mute:connection:));
+
+/**
+ *Stops or resumes receiving all remote video stream with connection.
+ *
+ *@param mute Whether to stop receiving remote video streams:
+ *- `YES`: Stop receiving any remote video stream.
+ *- `NO`: Resume receiving all remote video streams.
+ *
+ *@param connection \ref AgoraRtcConnection by channelId and uid combine
+ *
+ *@return
+ *- 0: Success.
+ *- < 0: Failure.
+ */
+- (int)muteAllRemoteVideoStreamsEx:(BOOL)mute
+                        connection:(AgoraRtcConnection * _Nonnull)connection NS_SWIFT_NAME(muteAllRemoteVideoStreamsEx(_:connection:));
 
  /**
    * Enables or disables the dual video stream mode.
+   *
+   * @deprecated v4.2.0. This method is deprecated. Use setDualStreamModeEx instead.
    *
    * If dual-stream mode is enabled, the subscriber can choose to receive the high-stream
    * (high-resolution high-bitrate video stream) or low-stream (low-resolution low-bitrate video
    * stream) video using \ref setRemoteVideoStreamType setRemoteVideoStreamType.
    *
-   * @param sourceType The video source type.
    * @param enabled
    * - true: Enable the dual-stream mode.
    * - false: (default) Disable the dual-stream mode.
    * @param streamConfig The minor stream config
    * @param connection An output parameter which is used to control different connection instances.
    */
-- (int)enableDualStreamModeEx:(AgoraVideoSourceType)sourceType
-                      enabled:(BOOL)enabled
+- (int)enableDualStreamModeEx:(BOOL)enabled
                  streamConfig:(AgoraSimulcastStreamConfig*)streamConfig
-                   connection:(AgoraRtcConnection* _Nonnull)connection;
+                   connection:(AgoraRtcConnection* _Nonnull)connection NS_SWIFT_NAME(enableDualStreamModeEx(_:streamConfig:connection:)) __deprecated_msg("use setDualStreamModeEx: instead.");
 
  /**
    * Enables or disables the dual video stream mode.
@@ -222,15 +303,13 @@ NS_ASSUME_NONNULL_BEGIN
    * (high-resolution high-bitrate video stream) or low-stream (low-resolution low-bitrate video
    * stream) video using \ref setRemoteVideoStreamType setRemoteVideoStreamType.
    *
-   * @param sourceType The video source type.
    * @param mode The dual-stream mode.
    * @param streamConfig The minor stream config
    * @param connection An output parameter which is used to control different connection instances.
    */
-- (int)setDualStreamModeEx:(AgoraVideoSourceType)sourceType
-                      mode:(AgoraSimulcastStreamMode)mode
+- (int)setDualStreamModeEx:(AgoraSimulcastStreamMode)mode
               streamConfig:(AgoraSimulcastStreamConfig*)streamConfig
-                connection:(AgoraRtcConnection* _Nonnull)connection;
+                connection:(AgoraRtcConnection* _Nonnull)connection NS_SWIFT_NAME(setDualStreamModeEx(_:streamConfig:connection:));
 
 
 /**
@@ -255,7 +334,7 @@ NS_ASSUME_NONNULL_BEGIN
  */
 - (int)setRemoteVideoStreamEx:(NSUInteger)uid
                          type:(AgoraVideoStreamType)streamType
-                   connection:(AgoraRtcConnection * _Nonnull)connection;
+                   connection:(AgoraRtcConnection * _Nonnull)connection NS_SWIFT_NAME(setRemoteVideoStreamEx(_:type:connection:));
 /**
    * Sets the remote video subscription options
    *
@@ -267,46 +346,9 @@ NS_ASSUME_NONNULL_BEGIN
    * - 0: Success.
    * - < 0: Failure.
    */
-- (int)setRemoteVideo:(NSUInteger)uid SubscriptionOptionsEx:(AgoraVideoSubscriptionOptions* _Nonnull)options
-           connection:(AgoraRtcConnection* _Nonnull)connection;
-
-/**
- * Pushes the encoded external video frame to specified connection in Agora SDK.
- *
- * @note
- * Ensure that you have configured encoded video source before calling this method.
- *
- * @param data The encoded external video data, which must be the direct buffer.
- * @param frameInfo The encoded external video frame info: AgoraEncodedVideoFrameInfo.
- * @param connection  \ref AgoraRtcConnection by channelId and uid combine
- *
- * @return
- * - 0: Success, which means that the encoded external video frame is pushed successfully.
- * - < 0: Failure, which means that the encoded external video frame fails to be pushed.
- */
-- (int)pushExternalEncodedVideoFrameEx:(NSData* _Nonnull)frame
-                                  info:(AgoraEncodedVideoFrameInfo * _Nonnull)info
-                            videoTrackId:(NSUInteger)videoTrackId;
-
-/**
- * Pushes the external video frame.
- *
- * This method pushes the video frame using the AgoraVideoFrame class and
- * passes it to the Agora SDK with the `format` parameter in AgoraVideoFormat.
- *
- * Call \ref setExternalVideoSource:useTexture:pushMode: setExternalVideoSource
- * and set the `pushMode` parameter as `YES` before calling this method.
- * @note
- * In the Communication profile, this method does not support pushing textured
- * video frames.
- * @param frame Video frame containing the SDK's encoded video data to be
- * pushed: #AgoraVideoFrame.
- * @param videoTrackId The id of the video track.
- * @return
- * - `YES`: Success.
- * - `NO`: Failure.
- */
-- (BOOL)pushExternalVideoFrame:(AgoraVideoFrame * _Nonnull)frame videoTrackId:(NSUInteger)videoTrackId;
+- (int)setRemoteVideoSubscriptionOptionsEx:(NSUInteger)uid
+                                   options:(AgoraVideoSubscriptionOptions* _Nonnull)options
+                                connection:(AgoraRtcConnection* _Nonnull)connection NS_SWIFT_NAME(setRemoteVideoSubscriptionOptionsEx(_:options:connection:));
 
 /** Gets the user information by passing in the user account.
 
@@ -320,7 +362,7 @@ NS_ASSUME_NONNULL_BEGIN
  */
 - (AgoraUserInfo* _Nullable)getUserInfoByUserAccountEx:(NSString* _Nonnull)userAccount
                                             connection:(AgoraRtcConnection * _Nonnull)connection
-                                             withError:(AgoraErrorCode* _Nullable)error;
+                                             withError:(AgoraErrorCode* _Nullable)error NS_SWIFT_NAME(getUserInfo(byUserAccountEx:connection:withError:));
 
 /** Gets the user information by passing in the user ID.
  *
@@ -336,7 +378,7 @@ NS_ASSUME_NONNULL_BEGIN
  */
 - (AgoraUserInfo* _Nullable)getUserInfoByUidEx:(NSUInteger)uid
                                     connection:(AgoraRtcConnection * _Nonnull)connection
-                                     withError:(AgoraErrorCode* _Nullable)error;
+                                     withError:(AgoraErrorCode* _Nullable)error NS_SWIFT_NAME(getUserInfo(byUidEx:connection:withError:));
 
 /**
  * Gets the connection state of the SDK.
@@ -345,7 +387,7 @@ NS_ASSUME_NONNULL_BEGIN
  *
  * @return The connection state. See \ref AgoraConnectionState.
  */
-- (AgoraConnectionState)getConnectionStateEx:(AgoraRtcConnection * _Nonnull)connection;
+- (AgoraConnectionState)getConnectionStateEx:(AgoraRtcConnection * _Nonnull)connection NS_SWIFT_NAME(getConnectionStateEx(_:));
 
 #if (!(TARGET_OS_IPHONE) && (TARGET_OS_MAC))
 /** Enables loopback sampling. (macOS only)
@@ -370,20 +412,79 @@ NS_ASSUME_NONNULL_BEGIN
   */
 - (int)enableLoopbackRecordingEx:(BOOL)enabled
                       deviceName:(NSString* _Nullable)deviceName
-                      connection:(AgoraRtcConnection * _Nonnull)connection;;
+                      connection:(AgoraRtcConnection * _Nonnull)connection NS_SWIFT_NAME(enableLoopbackRecordingEx(_:deviceName:connection:));
 #endif
+
+/**
+ * Adjusts the recording volume.
+ *
+ * @param volume The recording volume, which ranges from 0 to 400:
+ * - 0  : Mute the recording volume.
+ * - 100: The original volume.
+ * - 400: (Maximum) Four times the original volume with signal clipping protection.
+ *
+ * @param connection  \ref AgoraRtcConnection by channelId and uid combine
+ *
+ * @return
+ * - 0  : Success.
+ * - < 0: Failure.
+ */
+- (int)adjustRecordingSignalVolumeEx:(NSInteger)volume
+                          connection:(AgoraRtcConnection* _Nonnull)connection;
+
+/**
+ * Mutes or resume recording signal volume.
+ *
+ * @param mute Determines whether to mute or resume the recording signal volume.
+ * - YES: Mute the recording signal volume.
+ * -  NO: (Default) Resume the recording signal volume.
+ *
+ * @param connection  \ref AgoraRtcConnection by channelId and uid combine
+ *
+ * @return
+ * - 0  : Success.
+ * - < 0: Failure.
+ */
+- (int)muteRecordingSignalEx:(BOOL)mute
+                  connection:(AgoraRtcConnection* _Nonnull)connection;
+
+/** Adjust the playback signal volume of a specified remote user.
+
+ You can call this method as many times as necessary to adjust the playback volume of different remote users, or to repeatedly adjust the playback volume of the same remote user.
+
+ **Note**
+
+ - The playback volume here refers to the mixed volume of a specified remote user.
+ - This method can only adjust the playback volume of one specified remote user at a time. To adjust the playback volume of different remote users, call the method as many times, once for each remote user.
+
+ @param uid The ID of the remote user.
+ @param volume The playback volume of the specified remote user. The value
+ ranges between 0 and 400, including the following:
+
+ - 0: Mute.
+ - 100: (Default) Original volume.
+ @param connection  \ref AgoraRtcConnection by channelId and uid combine
+
+ @return
+ - 0: Success.
+ - < 0: Failure.
+ */
+
+- (int)adjustUserPlaybackSignalVolumeEx:(NSUInteger)uid
+                              volume:(NSInteger)volume
+                          connection:(AgoraRtcConnection* _Nonnull)connection;
 
 - (int)sendCustomReportMessageEx:(NSString * _Nullable)messageId
                         category:(NSString * _Nullable)category
                            event:(NSString * _Nullable)event
                            label:(NSString * _Nullable)label
                            value:(NSInteger)value
-                      connection:(AgoraRtcConnection * _Nonnull)connection;
+                      connection:(AgoraRtcConnection * _Nonnull)connection NS_SWIFT_NAME(sendCustomReportMessageEx(_:category:event:label:value:connection:));
 
 - (int)enableAudioVolumeIndicationEx:(NSInteger)interval
                               smooth:(NSInteger)smooth
                            reportVad:(BOOL)reportVad
-                          connection:(AgoraRtcConnection* _Nonnull)connection;
+                          connection:(AgoraRtcConnection* _Nonnull)connection NS_SWIFT_NAME(enableAudioVolumeIndicationEx(_:smooth:reportVad:connection:));
 
 /** Sets the sound position and gain of a remote user.
 
@@ -412,7 +513,7 @@ This method requires hardware support.
 - (int)setRemoteVoicePositionEx:(NSUInteger)uid
                           pan:(double)pan
                          gain:(double)gain
-                   connection:(AgoraRtcConnection * _Nonnull)connection;
+                   connection:(AgoraRtcConnection * _Nonnull)connection NS_SWIFT_NAME(setRemoteVoicePositionEx(_:pan:gain:connection:));
 
 /** Sets spatial audio parameters of a remote user.
 
@@ -432,7 +533,7 @@ This method requires hardware support.
  */
 - (int)setRemoteUserSpatialAudioParamsEx:(NSUInteger)uid
                                   params:(AgoraSpatialAudioParams* _Nonnull)params
-                              connection:(AgoraRtcConnection* _Nonnull)connection;
+                              connection:(AgoraRtcConnection* _Nonnull)connection NS_SWIFT_NAME(setRemoteUserSpatialAudioParamsEx(_:params:connection:));
 
 /** Adds a watermark image to the local video.
 
@@ -460,7 +561,7 @@ This method requires hardware support.
  @return * 0: Success.
  * < 0: Failure.
  */
-- (int)addVideoWatermarkEx:(NSURL* _Nonnull)url options:(WatermarkOptions* _Nonnull)options connection:(AgoraRtcConnection * _Nonnull)connection;
+- (int)addVideoWatermarkEx:(NSURL* _Nonnull)url options:(WatermarkOptions* _Nonnull)options connection:(AgoraRtcConnection * _Nonnull)connection NS_SWIFT_NAME(addVideoWatermarkEx(_:options:connection:));
 
 /** Clears the watermark image on the video stream.
  @param connection  \ref AgoraRtcConnection by channelId and uid combine
@@ -468,7 +569,7 @@ This method requires hardware support.
  @return * 0: Success.
  * < 0: Failure.
  */
-- (int)clearVideoWatermarkEx:(AgoraRtcConnection * _Nonnull)connection;
+- (int)clearVideoWatermarkEx:(AgoraRtcConnection * _Nonnull)connection NS_SWIFT_NAME(clearVideoWatermarkEx(_:));
 
 /**-----------------------------------------------------------------------------
  * @name Data Steam
@@ -497,7 +598,7 @@ This method requires hardware support.
 - (int)createDataStreamEx:(NSInteger * _Nonnull)streamId
                  reliable:(BOOL)reliable
                   ordered:(BOOL)ordered
-               connection:(AgoraRtcConnection * _Nonnull)connection;
+               connection:(AgoraRtcConnection * _Nonnull)connection NS_SWIFT_NAME(createDataStreamEx(_:reliable:ordered:connection:));
 /** Creates a data stream.
 
  Each user can create up to five data streams during the lifecycle of the [AgoraRtcChannel](AgoraRtcChannel).
@@ -510,7 +611,7 @@ This method requires hardware support.
  */
 - (int)createDataStreamEx:(NSInteger * _Nonnull)streamId
                    config:(AgoraDataStreamConfig * _Nonnull)config
-               connection:(AgoraRtcConnection * _Nonnull)connection;
+               connection:(AgoraRtcConnection * _Nonnull)connection NS_SWIFT_NAME(createDataStreamEx(_:config:connection:));
 
 /** Sends data stream messages to all users in a channel.
 
@@ -538,7 +639,28 @@ If the remote user does not receive the data stream within five seconds, the SDK
 */
 - (int)sendStreamMessageEx:(NSInteger)streamId
                       data:(NSData * _Nonnull)data
-                connection:(AgoraRtcConnection * _Nonnull)connection;
+                connection:(AgoraRtcConnection * _Nonnull)connection NS_SWIFT_NAME(sendStreamMessageEx(_:data:connection:));
+
+/**-----------------------------------------------------------------------------
+ * @name Stream Fallback
+ * -----------------------------------------------------------------------------
+ */
+
+ /**
+ * Sets the high priority user list and related remote subscribe fallback option.
+ *
+ * @param uidList The uid list of high priority users.
+ * @param option The remote subscribe fallback option of high priority users.
+ * @param connection  \ref AgoraRtcConnection by channelId and uid combine.
+ *
+ * @return
+ * - 0: Success.
+ * - < 0: Failure.
+ */
+
+- (int)setHighPriorityUserListEx:(NSArray <NSNumber *> *_Nullable)uidList
+                          option:(AgoraStreamFallbackOptions)option
+                      connection:(AgoraRtcConnection* _Nonnull)connection;
 
 /**-----------------------------------------------------------------------------
  * @name Stream Publish
@@ -546,70 +668,287 @@ If the remote user does not receive the data stream within five seconds, the SDK
  */
 
  /**
- * Sets the blacklist of subscribe remote stream audio.
+ * Sets the blocklist of subscribe remote stream audio.
  *
- * @param blacklist The uid list of users who do not subscribe to audio.
+ * @param blocklist The uid list of users who do not subscribe to audio.
  * @param connection  \ref AgoraRtcConnection by channelId and uid combine.
  * @note
- * If uid is in blacklist, the remote user's audio will not be subscribed,
+ * If uid is in blocklist, the remote user's audio will not be subscribed,
  * even if muteRemoteAudioStream(uid, false) and muteAllRemoteAudioStreams(false) are operated.
  *
  * @return
  * - 0: Success.
  * - < 0: Failure.
  */
-- (int)setSubscribeAudioBlacklistEx:(NSArray <NSNumber *> *_Nonnull)blacklist connection:(AgoraRtcConnection * _Nonnull)connection;
+- (int)setSubscribeAudioBlocklistEx:(NSArray <NSNumber *> *_Nonnull)blocklist connection:(AgoraRtcConnection * _Nonnull)connection NS_SWIFT_NAME(setSubscribeAudioBlocklistEx(_:connection:));
 
 /**
- * Sets the whitelist of subscribe remote stream audio.
+ * Sets the allowlist of subscribe remote stream audio.
  *
- * @param whitelist The uid list of users who do subscribe to audio.
+ * @param allowlist The uid list of users who do subscribe to audio.
  * @param connection  \ref AgoraRtcConnection by channelId and uid combine.
  * @note
- * If uid is in whitelist, the remote user's audio will be subscribed,
+ * If uid is in allowlist, the remote user's audio will be subscribed,
  * even if muteRemoteAudioStream(uid, true) and muteAllRemoteAudioStreams(true) are operated.
  *
- * If a user is in the blacklist and whitelist at the same time, the user will not subscribe to audio.
+ * If a user is in the blocklist and allowlist at the same time, the user will not subscribe to audio.
  *
  * @return
  * - 0: Success.
  * - < 0: Failure.
  */
-- (int)setSubscribeAudioWhitelistEx:(NSArray <NSNumber *> *_Nonnull)whitelist connection:(AgoraRtcConnection * _Nonnull)connection;
+- (int)setSubscribeAudioAllowlistEx:(NSArray <NSNumber *> *_Nonnull)allowlist connection:(AgoraRtcConnection * _Nonnull)connection NS_SWIFT_NAME(setSubscribeAudioAllowlistEx(_:connection:));
 
 /**
- * Sets the blacklist of subscribe remote stream video.
+ * Sets the blocklist of subscribe remote stream video.
  *
- * @param blacklist The uid list of users who do not subscribe to video.
+ * @param blocklist The uid list of users who do not subscribe to video.
  * @param connection  \ref AgoraRtcConnection by channelId and uid combine.
  * @note
- * If uid is in blacklist, the remote user's video will not be subscribed,
+ * If uid is in blocklist, the remote user's video will not be subscribed,
  * even if muteRemoteVideoStream(uid, false) and muteAllRemoteVideoStreams(false) are operated.
  *
  * @return
  * - 0: Success.
  * - < 0: Failure.
  */
-- (int)setSubscribeVideoBlacklistEx:(NSArray <NSNumber *> *_Nonnull)blacklist connection:(AgoraRtcConnection * _Nonnull)connection;
+- (int)setSubscribeVideoBlocklistEx:(NSArray <NSNumber *> *_Nonnull)blocklist connection:(AgoraRtcConnection * _Nonnull)connection NS_SWIFT_NAME(setSubscribeVideoBlocklistEx(_:connection:));
 
 /**
- * Sets the whitelist of subscribe remote stream video.
+ * Sets the allowlist of subscribe remote stream video.
  *
- * @param whitelist The uid list of users who do subscribe to video.
+ * @param allowlist The uid list of users who do subscribe to video.
  * @param connection  \ref AgoraRtcConnection by channelId and uid combine.
  * @note
  * If uid is in whitelist, the remote user's video will be subscribed,
  * even if muteRemoteVideoStream(uid, true) and muteAllRemoteVideoStreams(true) are operated.
  *
- * If a user is in the blacklist and whitelist at the same time, the user will not subscribe to video.
+ * If a user is in the blocklist and allowlist at the same time, the user will not subscribe to video.
  *
  * @return
  * - 0: Success.
  * - < 0: Failure.
  */
-- (int)setSubscribeVideoWhitelistEx:(NSArray <NSNumber *> *_Nonnull)whitelist connection:(AgoraRtcConnection * _Nonnull)connection;
+- (int)setSubscribeVideoAllowlistEx:(NSArray <NSNumber *> *_Nonnull)allowlist connection:(AgoraRtcConnection * _Nonnull)connection NS_SWIFT_NAME(setSubscribeVideoAllowlistEx(_:connection:));
 
-- (NSInteger)takeSnapshotEx:(AgoraRtcConnection * _Nonnull)connection uid:(NSInteger)uid filePath:(NSString* _Nonnull)filePath;
+- (NSInteger)takeSnapshotEx:(AgoraRtcConnection * _Nonnull)connection uid:(NSInteger)uid filePath:(NSString* _Nonnull)filePath NS_SWIFT_NAME(takeSnapshotEx(_:uid:filePath:));
+
+/**
+   * send audio metadata
+   * @since v4.3.1
+   * @param metadata The NSData of metadata
+   * @param connection AgoraRtcConnection.
+   * @return
+   * - 0: success
+   * - <0: failure
+   * @technical preview
+*/
+- (int)sendAudioMetadataEx:(AgoraRtcConnection * _Nonnull)connection metadata:(NSData * _Nonnull)metadata NS_SWIFT_NAME(sendAudioMetadataEx(_:metadata:));
+/** 
+ *  Enables video screenshot and upload with the connection ID.
+ * @param enabled Whether to video screenshot and upload:
+ * - `true`: Yes.
+ * - `false`: No.
+ * @param config The configuration for video screenshot and upload.
+ * @param connection The connection information. See AgoraRtcConnection.
+ * @return
+ * - 0: Success.
+ * - < 0: Failure.
+ */
+- (int)enableContentInspectEx:(BOOL)enabled config:(AgoraContentInspectConfig* _Nonnull)config connection:(AgoraRtcConnection * _Nonnull)connection NS_SWIFT_NAME(enableContentInspectEx(_:config:connection:));
+
+/** Publishes the local stream without transcoding to a specified CDN live RTMP address.  (CDN live only.)
+  *
+  * @param url The CDN streaming URL in the RTMP format. The maximum length of this parameter is 1024 bytes.
+  * @param connection AgoraRtcConnection.
+  * @return
+  * - 0: Success.
+  * - < 0: Failure.
+  */
+- (int)startRtmpStreamWithoutTranscodingEx:(NSString* _Nonnull)url
+                                connection:(AgoraRtcConnection * _Nonnull)connection NS_SWIFT_NAME(startRtmpStreamWithoutTranscodingEx(_:connection:));
+
+/** Publishes the local stream with transcoding to a specified CDN live RTMP address.  (CDN live only.)
+  *
+  * @param url The CDN streaming URL in the RTMP format. The maximum length of this parameter is 1024 bytes.
+  * @param transcoding Sets the CDN live audio/video transcoding settings.  See LiveTranscoding.
+  * @param connection AgoraRtcConnection.
+  *
+  * @return
+  * - 0: Success.
+  * - < 0: Failure.
+  */
+- (int)startRtmpStreamWithTranscodingEx:(NSString* _Nonnull)url
+                            transcoding:(AgoraLiveTranscoding* _Nullable)transcoding
+                             connection:(AgoraRtcConnection * _Nonnull)connection NS_SWIFT_NAME(startRtmpStreamWithTranscodingEx(_:transcoding:connection:));
+
+/** Update the video layout and audio settings for CDN live. (CDN live only.)
+  * @note This method applies to Live Broadcast only.
+  *
+  * @param transcoding Sets the CDN live audio/video transcoding settings. See LiveTranscoding.
+  * @param connection AgoraRtcConnection.
+  *
+  * @return
+  * - 0: Success.
+  * - < 0: Failure.
+  */
+- (int)updateRtmpTranscodingEx:(AgoraLiveTranscoding* _Nullable)transcoding
+                    connection:(AgoraRtcConnection * _Nonnull)connection NS_SWIFT_NAME(updateRtmpTranscodingEx(_:connection:));
+
+/** Stop an RTMP stream with transcoding or without transcoding from the CDN. (CDN live only.)
+  * @param url The RTMP URL address to be removed. The maximum length of this parameter is 1024 bytes.
+  * @param connection AgoraRtcConnection.
+  * @return
+  * - 0: Success.
+  * - < 0: Failure.
+  */
+- (int)stopRtmpStreamEx:(NSString* _Nonnull)url
+             connection:(AgoraRtcConnection * _Nonnull)connection NS_SWIFT_NAME(stopRtmpStreamEx(_:connection:));
+
+/** Starts or update to relay media streams across channels.
+ *
+ * @since v4.2.0
+ * @param config The configuration of the media stream relay:AgoraChannelMediaRelayConfiguration.
+ * @param connection AgoraRtcConnection.
+ * @return
+ * - 0: Success.
+ * - < 0: Failure.
+ *   - -1(ERR_FAILED): A general error occurs (no specified reason).
+ *   - -2(ERR_INVALID_ARGUMENT): The argument is invalid.
+ *   - -5(ERR_REFUSED): The request is rejected.
+ *   - -8(ERR_INVALID_STATE): The current status is invalid, only allowed to be called when the role is the broadcaster.
+ */
+- (int)startOrUpdateChannelMediaRelayEx:(AgoraChannelMediaRelayConfiguration * _Nonnull)config connection:(AgoraRtcConnection * _Nonnull)connection NS_SWIFT_NAME(startOrUpdateChannelMediaRelayEx(_:connection:));
+
+/** Stops the media stream relay.
+ *
+ * Once the relay stops, the host quits all the destination
+ * channels.
+ *
+ * @param connection AgoraRtcConnection.
+ * @return
+ * - 0: Success.
+ * - < 0: Failure.
+ *   - -1(ERR_FAILED): A general error occurs (no specified reason).
+ *   - -2(ERR_INVALID_ARGUMENT): The argument is invalid.
+ *   - -5(ERR_REFUSED): The request is rejected.
+ *   - -7(ERR_NOT_INITIALIZED): cross channel media streams are not relayed.
+ */
+- (int)stopChannelMediaRelayEx:(AgoraRtcConnection * _Nonnull)connection NS_SWIFT_NAME(stopChannelMediaRelayEx(_:));
+
+/** pause the channels for media stream relay.
+ *
+ * @param connection AgoraRtcConnection.
+ * @return
+ * - 0: Success.
+ * - < 0: Failure.
+ *   - -1(ERR_FAILED): A general error occurs (no specified reason).
+ *   - -2(ERR_INVALID_ARGUMENT): The argument is invalid.
+ *   - -5(ERR_REFUSED): The request is rejected.
+ *   - -7(ERR_NOT_INITIALIZED): cross channel media streams are not relayed.
+ */
+- (int)pauseAllChannelMediaRelayEx:(AgoraRtcConnection * _Nonnull)connection NS_SWIFT_NAME(pauseAllChannelMediaRelayEx(_:));
+
+/** resume the channels for media stream relay.
+ *
+ * @param connection AgoraRtcConnection.
+ * @return
+ * - 0: Success.
+ * - < 0: Failure.
+ *   - -1(ERR_FAILED): A general error occurs (no specified reason).
+ *   - -2(ERR_INVALID_ARGUMENT): The argument is invalid.
+ *   - -5(ERR_REFUSED): The request is rejected.
+ *   - -7(ERR_NOT_INITIALIZED): cross channel media streams are not relayed.
+ */
+- (int)resumeAllChannelMediaRelayEx:(AgoraRtcConnection * _Nonnull)connection NS_SWIFT_NAME(resumeAllChannelMediaRelayEx(_:));
+
+/**
+ @brief Start tracing media rendering events.
+ @since v4.1.1
+ @discussion
+ - SDK will trace media rendering events when this API is called.
+ - The tracing result can be obtained through callback `[AgoraRtcEngineDelegate rtcEngine:videoRenderingTracingResultOfUid:currentEvent:tracingInfo:]`
+ @param connection AgoraRtcConnection.
+ @note
+ - By default, SDK will trace media rendering events when join channel.
+ - The start point of event tracing will be reset after leaving channel.
+ @return
+ - 0: Success.
+ - < 0: Failure.
+  - `-2(AgoraErrorCodeInvalidArgument)`: The parameter is invalid. Check the channel ID and local uid set by parameter `connection`.
+  - `-7(AgoraErrorCodeNotInitialized)`: The SDK is not initialized.
+ */
+- (int)startMediaRenderingTracingEx:(AgoraRtcConnection * _Nonnull)connection NS_SWIFT_NAME(startMediaRenderingTracingEx(_:));
+
+/** Provides the technical preview functionalities or special customizations by configuring the SDK with JSON options.
+
+ @note  The JSON options are not public by default. Agora is working on making commonly used JSON options public in a standard way. Contact support@agora.io for more information.
+
+ @param options SDK options in JSON format.
+ @param connection AgoraRtcConnection.
+ */
+- (int)setParametersEx:(NSString * _Nonnull)options connection:(AgoraRtcConnection * _Nonnull)connection NS_SWIFT_NAME(setParametersEx(_:connection:));
+
+/**
+ * Gets the current call ID.
+ *
+ * When a user joins a channel, a call ID is generated to identify the call.
+ *
+ * After a call ends, you can call `rate` or `complain` to gather feedback from
+ * your customer.
+ *
+ * @param connection The AgoraRtcConnection object.
+ * @return The call ID if the method call is successful.
+ */
+- (NSString * _Nullable)getCallIdEx:(AgoraRtcConnection * _Nonnull)connection NS_SWIFT_NAME(getCallIdEx(_:));
+
+/** 
+ * Adds multiple SDK delegate.
+ * 
+ * @param delegate The AgoraRtcEngineDelegate object. 
+ * @param connection The AgoraRtcConnection object.
+ */
+- (void)addDelegateEx:(id<AgoraRtcEngineDelegate> _Nonnull)delegate connection:(AgoraRtcConnection * _Nonnull)connection NS_SWIFT_NAME(addDelegateEx(_:connection:));
+
+/** 
+ * Removes multiple SDK delegate.
+ * 
+ * @param delegate The AgoraRtcEngineDelegate object. 
+ * @param connection The AgoraRtcConnection object.
+ */
+- (void)removeDelegateEx:(id<AgoraRtcEngineDelegate> _Nonnull)delegate connection:(AgoraRtcConnection * _Nonnull)connection NS_SWIFT_NAME(removeDelegateEx(_:connection:));
+
+/**-----------------------------------------------------------------------------
+ * @name Built-in Encryption
+ * -----------------------------------------------------------------------------
+ */
+
+/** Enables/Disables the built-in encryption.
+
+ In scenarios requiring high security, Agora recommends calling enableEncryption to enable the built-in encryption before joining a channel.
+
+ All users in the same channel must use the same encryption mode and encryption key. Once all users leave the channel, the encryption key of this channel is automatically cleared.
+
+ **Note**
+
+ - If you enable the built-in encryption, you cannot use the RTMP streaming function.
+
+ @param enabled Whether to enable the built-in encryption:
+
+ - YES: Enable the built-in encryption.
+ - NO: Disable the built-in encryption.
+
+ @param config Configurations of built-in encryption schemas. See AgoraEncryptionConfig.
+ @param connection  \ref AgoraRtcConnection by channelId and uid combine
+ 
+ @return - 0: Success.
+ - < 0: Failure.
+
+  - -2 (`AgoraErrorCodeInvalidArgument`): An invalid parameter is used. Set the parameter with a valid value.
+  - -7 (`AgoraErrorCodeNotInitialized`): The SDK is not initialized. Initialize the `AgoraRtcEngineKit` instance before calling this method.
+  - -4 (`AgoraErrorCodeNotSupported`): The encryption mode is incorrect or the SDK fails to load the external encryption library. Check the enumeration or reload the external encryption library.
+ */
+- (int)enableEncryptionEx:(bool)enabled encryptionConfig:(AgoraEncryptionConfig *_Nonnull)config connection:(AgoraRtcConnection* _Nonnull)connection NS_SWIFT_NAME(enableEncryptionEx(_:encryptionConfig:connection:));
 @end
 
 NS_ASSUME_NONNULL_END

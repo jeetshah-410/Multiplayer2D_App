@@ -1,9 +1,8 @@
 ﻿using UnityEngine;
 using UnityEngine.UI;
 using Agora.Rtc;
-using Agora.Util;
 using UnityEngine.Serialization;
-using Logger = Agora.Util.Logger;
+using io.agora.rtc.demo;
 
 namespace Agora_RTC_Plugin.API_Example.Examples.Advanced.ChannelMediaRelay
 {
@@ -62,9 +61,10 @@ namespace Agora_RTC_Plugin.API_Example.Examples.Advanced.ChannelMediaRelay
         {
             RtcEngine = Agora.Rtc.RtcEngine.CreateAgoraRtcEngine();
             UserEventHandler handler = new UserEventHandler(this);
-            RtcEngineContext context = new RtcEngineContext(_appID, 0,
-                CHANNEL_PROFILE_TYPE.CHANNEL_PROFILE_LIVE_BROADCASTING,
-                AUDIO_SCENARIO_TYPE.AUDIO_SCENARIO_GAME_STREAMING);
+            RtcEngineContext context = new RtcEngineContext();
+            context.appId = _appID;
+            context.channelProfile = CHANNEL_PROFILE_TYPE.CHANNEL_PROFILE_LIVE_BROADCASTING;
+            context.audioScenario = AUDIO_SCENARIO_TYPE.AUDIO_SCENARIO_GAME_STREAMING;
             RtcEngine.Initialize(context);
             RtcEngine.InitEventHandler(handler);
         }
@@ -74,7 +74,7 @@ namespace Agora_RTC_Plugin.API_Example.Examples.Advanced.ChannelMediaRelay
             RtcEngine.SetClientRole(CLIENT_ROLE_TYPE.CLIENT_ROLE_BROADCASTER);
             RtcEngine.EnableAudio();
             RtcEngine.EnableVideo();
-            RtcEngine.JoinChannel(_token, _channelName, "");
+            RtcEngine.JoinChannel(_token, _channelName, "",0);
         }
 
         private void Update()
@@ -129,8 +129,8 @@ namespace Agora_RTC_Plugin.API_Example.Examples.Advanced.ChannelMediaRelay
             };
             config.destCount = 1;
 
-            var nRet = RtcEngine.StartChannelMediaRelay(config);
-            this.Log.UpdateLog("StartChannelMediaRelay nRet:" + nRet + " new ChannelName: " + this._appIdInput.channelName + "_2");
+            var nRet = RtcEngine.StartOrUpdateChannelMediaRelay(config);
+            this.Log.UpdateLog("StartOrUpdateChannelMediaRelay nRet:" + nRet + " new ChannelName: " + this._appIdInput.channelName + "_2");
         }
 
         private void onUpdateButtonClick()
@@ -153,7 +153,7 @@ namespace Agora_RTC_Plugin.API_Example.Examples.Advanced.ChannelMediaRelay
             config.destCount = 1;
 
             //after StartChannelMediaRelay you can use StartChannelMediaRelay to remove or relay to anthoner channel
-            var nRet = RtcEngine.UpdateChannelMediaRelay(config);
+            var nRet = RtcEngine.StartOrUpdateChannelMediaRelay(config);
             this.Log.UpdateLog("UpdateChannelMediaRelay nRet:" + nRet + " new ChannelName: " + this._appIdInput.channelName + "_3");
         }
 
@@ -203,8 +203,19 @@ namespace Agora_RTC_Plugin.API_Example.Examples.Advanced.ChannelMediaRelay
 
             videoSurface.OnTextureSizeModify += (int width, int height) =>
             {
-                float scale = (float)height / (float)width;
-                videoSurface.transform.localScale = new Vector3(-5, 5 * scale, 1);
+                var transform = videoSurface.GetComponent<RectTransform>();
+                if (transform)
+                {
+                    //If render in RawImage. just set rawImage size.
+                    transform.sizeDelta = new Vector2(width / 2, height / 2);
+                    transform.localScale = Vector3.one;
+                }
+                else
+                {
+                    //If render in MeshRenderer, just set localSize with MeshRenderer
+                    float scale = (float)height / (float)width;
+                    videoSurface.transform.localScale = new Vector3(-1, 1, scale);
+                }
                 Debug.Log("OnTextureSizeModify: " + width + "  " + height);
             };
             videoSurface.SetEnable(true);
@@ -221,6 +232,12 @@ namespace Agora_RTC_Plugin.API_Example.Examples.Advanced.ChannelMediaRelay
             }
 
             go.name = goName;
+            var mesh = go.GetComponent<MeshRenderer>();
+            if (mesh != null)
+            {
+                Debug.LogWarning("VideoSureface update shader");
+                mesh.material = new Material(Shader.Find("Unlit/Texture"));
+            }
             // set up transform
             go.transform.Rotate(-90.0f, 0.0f, 0.0f);
 
@@ -322,7 +339,7 @@ namespace Agora_RTC_Plugin.API_Example.Examples.Advanced.ChannelMediaRelay
             ChannelMediaRelay.DestroyVideoView(0);
         }
 
-        public override void OnClientRoleChanged(RtcConnection connection, CLIENT_ROLE_TYPE oldRole, CLIENT_ROLE_TYPE newRole)
+        public override void OnClientRoleChanged(RtcConnection connection, CLIENT_ROLE_TYPE oldRole, CLIENT_ROLE_TYPE newRole, ClientRoleOptions newRoleOptions)
         {
             _channelMediaRelay.Log.UpdateLog(string.Format("OnClientRoleChanged {0}, {1}", oldRole, newRole));
         }
@@ -338,12 +355,6 @@ namespace Agora_RTC_Plugin.API_Example.Examples.Advanced.ChannelMediaRelay
             _channelMediaRelay.Log.UpdateLog(string.Format("OnUserOffLine uid: ${0}, reason: ${1}", uid,
                 (int)reason));
             ChannelMediaRelay.DestroyVideoView(uid);
-        }
-
-        public override void OnChannelMediaRelayEvent(int code)
-        {
-            _channelMediaRelay.Log.UpdateLog(string.Format("OnChannelMediaRelayEvent: {0}", code));
-
         }
 
         public override void OnChannelMediaRelayStateChanged(int state, int code)

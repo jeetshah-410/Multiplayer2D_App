@@ -2,8 +2,7 @@
 using UnityEngine.UI;
 using UnityEngine.Serialization;
 using Agora.Rtc;
-using Agora.Util;
-using Logger = Agora.Util.Logger;
+using io.agora.rtc.demo;
 
 namespace Agora_RTC_Plugin.API_Example.Examples.Advanced.StartRtmpStreamWithTranscoding
 {
@@ -27,7 +26,7 @@ namespace Agora_RTC_Plugin.API_Example.Examples.Advanced.StartRtmpStreamWithTran
         private string _channelName = "";
 
         public Text LogText;
-        public InputField rtmpUrl;
+        public InputField InputField;
         internal Logger Log;
         internal IRtcEngine RtcEngine = null;
         public uint Uid = 0;
@@ -72,9 +71,11 @@ namespace Agora_RTC_Plugin.API_Example.Examples.Advanced.StartRtmpStreamWithTran
         {
             RtcEngine = Agora.Rtc.RtcEngine.CreateAgoraRtcEngine();
             UserEventHandler handler = new UserEventHandler(this);
-            RtcEngineContext context = new RtcEngineContext(_appID, 0,
-                                        CHANNEL_PROFILE_TYPE.CHANNEL_PROFILE_LIVE_BROADCASTING,
-                                        AUDIO_SCENARIO_TYPE.AUDIO_SCENARIO_DEFAULT);
+            RtcEngineContext context = new RtcEngineContext();
+            context.appId = _appID;
+            context.channelProfile = CHANNEL_PROFILE_TYPE.CHANNEL_PROFILE_LIVE_BROADCASTING;
+            context.audioScenario = AUDIO_SCENARIO_TYPE.AUDIO_SCENARIO_DEFAULT;
+            context.areaCode = AREA_CODE.AREA_CODE_GLOB;
             RtcEngine.Initialize(context);
             RtcEngine.InitEventHandler(handler);
         }
@@ -84,7 +85,7 @@ namespace Agora_RTC_Plugin.API_Example.Examples.Advanced.StartRtmpStreamWithTran
             RtcEngine.EnableAudio();
             RtcEngine.EnableVideo();
             RtcEngine.SetClientRole(CLIENT_ROLE_TYPE.CLIENT_ROLE_BROADCASTER);
-            RtcEngine.JoinChannel(_token, _channelName);
+            RtcEngine.JoinChannel(_token, _channelName, "", 0);
         }
 
         private void SetUpUI()
@@ -122,13 +123,11 @@ namespace Agora_RTC_Plugin.API_Example.Examples.Advanced.StartRtmpStreamWithTran
                 audioChannel = 0
             };
 
-            var url = this.rtmpUrl.text;
-            if (url == "")
-            {
-                this.Log.UpdateLog("your must input your rtmpUrl in Inspector of VideoCanvas");
+            var url = this.InputField.text;
+            if (url == "") {
+                this.Log.UpdateLog("you must input your url first");
                 return;
             }
-
             var nRet = RtcEngine.StartRtmpStreamWithTranscoding(url, liveTranscoding);
             this.Log.UpdateLog("StartRtmpStreamWithTranscoding:" + nRet);
             if (nRet == 0)
@@ -137,7 +136,7 @@ namespace Agora_RTC_Plugin.API_Example.Examples.Advanced.StartRtmpStreamWithTran
                 /* 
                     Verify remote
                     1.install ffmpeg(brew install ffmpeg)
-                    2.ffplay rtmp://play.xxxxx.xxx.xxxx
+                    2.ffplay rtmp://play.xxxxxxxxxx
                  */
             }
         }
@@ -168,10 +167,10 @@ namespace Agora_RTC_Plugin.API_Example.Examples.Advanced.StartRtmpStreamWithTran
 
         private void OnStopButtonPress()
         {
-            var url = this.rtmpUrl.text;
+            var url = this.InputField.text;
             if (url == "")
             {
-                this.Log.UpdateLog("your must input your rtmpUrl in Inspector of VideoCanvas");
+                this.Log.UpdateLog("you must input your url first");
                 return;
             }
             var nRet = RtcEngine.StopRtmpStream(url);
@@ -217,8 +216,19 @@ namespace Agora_RTC_Plugin.API_Example.Examples.Advanced.StartRtmpStreamWithTran
 
             videoSurface.OnTextureSizeModify += (int width, int height) =>
             {
-                float scale = (float)height / (float)width;
-                videoSurface.transform.localScale = new Vector3(-5, 5 * scale, 1);
+                var transform = videoSurface.GetComponent<RectTransform>();
+                if (transform)
+                {
+                    //If render in RawImage. just set rawImage size.
+                    transform.sizeDelta = new Vector2(width / 2, height / 2);
+                    transform.localScale = Vector3.one;
+                }
+                else
+                {
+                    //If render in MeshRenderer, just set localSize with MeshRenderer
+                    float scale = (float)height / (float)width;
+                    videoSurface.transform.localScale = new Vector3(-1, 1, scale);
+                }
                 Debug.Log("OnTextureSizeModify: " + width + "  " + height);
             };
 
@@ -236,10 +246,14 @@ namespace Agora_RTC_Plugin.API_Example.Examples.Advanced.StartRtmpStreamWithTran
             }
 
             go.name = goName;
+            var mesh = go.GetComponent<MeshRenderer>();
+            if (mesh != null)
+            {
+                Debug.LogWarning("VideoSureface update shader");
+                mesh.material = new Material(Shader.Find("Unlit/Texture"));
+            }
             // set up transform
             go.transform.Rotate(-90.0f, 0.0f, 0.0f);
-            var yPos = Random.Range(3.0f, 5.0f);
-            var xPos = Random.Range(-2.0f, 2.0f);
             go.transform.position = Vector3.zero;
             go.transform.localScale = new Vector3(0.25f, 0.5f, 0.5f);
 
@@ -336,7 +350,7 @@ namespace Agora_RTC_Plugin.API_Example.Examples.Advanced.StartRtmpStreamWithTran
             StartRtmpStreamWithTranscoding.DestroyVideoView(0);
         }
 
-        public override void OnClientRoleChanged(RtcConnection connection, CLIENT_ROLE_TYPE oldRole, CLIENT_ROLE_TYPE newRole)
+        public override void OnClientRoleChanged(RtcConnection connection, CLIENT_ROLE_TYPE oldRole, CLIENT_ROLE_TYPE newRole, ClientRoleOptions newRoleOptions)
         {
             _sample.Log.UpdateLog("OnClientRoleChanged");
         }
@@ -354,9 +368,9 @@ namespace Agora_RTC_Plugin.API_Example.Examples.Advanced.StartRtmpStreamWithTran
             StartRtmpStreamWithTranscoding.DestroyVideoView(uid);
         }
 
-        public override void OnRtmpStreamingStateChanged(string url, RTMP_STREAM_PUBLISH_STATE state, RTMP_STREAM_PUBLISH_ERROR_TYPE errCode)
+        public override void OnRtmpStreamingStateChanged(string url, RTMP_STREAM_PUBLISH_STATE state, RTMP_STREAM_PUBLISH_REASON reason)
         {
-            _sample.Log.UpdateLog(string.Format("OnRtmpStreamingStateChanged url:{0},  state:{1},  errCode:{2}", url, state, errCode));
+            _sample.Log.UpdateLog(string.Format("OnRtmpStreamingStateChanged url:{0},  state:{1},  reason:{2}", url, state, reason));
         }
 
         public override void OnTranscodingUpdated()

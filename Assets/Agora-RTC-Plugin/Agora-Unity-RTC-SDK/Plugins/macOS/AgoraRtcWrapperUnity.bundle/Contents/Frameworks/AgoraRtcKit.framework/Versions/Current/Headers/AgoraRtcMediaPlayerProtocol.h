@@ -7,7 +7,6 @@
 
 #import <Foundation/Foundation.h>
 #import "AgoraObjects.h"
-#import "AgoraRtcAudioSpectrumDelegate.h"
 #if TARGET_OS_IPHONE
 #import <UIKit/UIKit.h>
 typedef UIView View;
@@ -16,8 +15,10 @@ typedef UIView View;
 typedef NSView View;
 #endif
 
+@protocol AgoraRtcAudioSpectrumDelegateocol;
 @protocol AgoraRtcMediaPlayerAudioFrameDelegate;
 @protocol AgoraRtcMediaPlayerVideoFrameDelegate;
+@protocol AgoraAudioSpectrumDelegate;
 
 NS_ASSUME_NONNULL_BEGIN
 @protocol AgoraRtcMediaPlayerProtocol <NSObject>
@@ -28,7 +29,7 @@ NS_ASSUME_NONNULL_BEGIN
  * - >= 0: The mediaPlayerId of this media player entity.
  * - < 0: Failure.
  */
-- (int)getMediaPlayerId;
+- (int)getMediaPlayerId NS_SWIFT_NAME(getMediaPlayerId());
 /**
  * Opens a media file with a specified URL.
  * @param url The URL of the media file that you want to play.
@@ -36,7 +37,7 @@ NS_ASSUME_NONNULL_BEGIN
  * - 0: Success.
  * - < 0: Failure.
  */
-- (int)open:(NSString *)url startPos:(NSInteger)startPos;
+- (int)open:(NSString *)url startPos:(NSInteger)startPos NS_SWIFT_NAME(open(_:startPos:));
 
 
 /**
@@ -46,7 +47,7 @@ NS_ASSUME_NONNULL_BEGIN
  * - 0: Success.
  * - < 0: Failure.
  */
-- (int)openWithMediaSource:(AgoraMediaSource *)source;
+- (int)openWithMediaSource:(AgoraMediaSource *)source NS_SWIFT_NAME(open(with:));
 
 /**
  * Open the Agora CDN media source.
@@ -56,7 +57,7 @@ NS_ASSUME_NONNULL_BEGIN
  * - 0: Success.
  * - < 0: Failure.
  */
-- (int)openWithAgoraCDNSrc:(NSString *)src startPos:(NSInteger)startPos;
+- (int)openWithAgoraCDNSrc:(NSString *)src startPos:(NSInteger)startPos NS_SWIFT_NAME(open(withAgoraCDNSrc:startPos:));
 
 /**
  * Gets the number of  Agora CDN lines.
@@ -64,7 +65,7 @@ NS_ASSUME_NONNULL_BEGIN
  * - > 0: number of CDN.
  * - <= 0: Failure.
  */
-- (int)getAgoraCDNLineCount;
+- (int)getAgoraCDNLineCount NS_SWIFT_NAME(getAgoraCDNLineCount());
 
 /**
  * Switch Agora CDN lines.
@@ -73,7 +74,7 @@ NS_ASSUME_NONNULL_BEGIN
  * - 0: Success.
  * - < 0: Failure.
  */
-- (int)switchAgoraCDNLineByIndex:(int)index;
+- (int)switchAgoraCDNLineByIndex:(int)index NS_SWIFT_NAME(switchAgoraCDNLine(by:));
 
 /**
  * Gets the line of the current CDN.
@@ -81,7 +82,7 @@ NS_ASSUME_NONNULL_BEGIN
  * - >= 0: Specific line.
  * - < 0: Failure.
  */
-- (int)getCurrentAgoraCDNIndex;
+- (int)getCurrentAgoraCDNIndex NS_SWIFT_NAME(getCurrentAgoraCDNIndex());
 
 /**
  * Enable automatic CDN line switching.
@@ -90,7 +91,7 @@ NS_ASSUME_NONNULL_BEGIN
  * - 0: Success.
  * - < 0: Failure.
  */
-- (int)enableAutoSwitchAgoraCDN:(BOOL)enable;
+- (int)enableAutoSwitchAgoraCDN:(BOOL)enable NS_SWIFT_NAME(enableAutoSwitchAgoraCDN(_:));
 
 /**
  * Update the CDN source token and timestamp.
@@ -100,7 +101,7 @@ NS_ASSUME_NONNULL_BEGIN
  * - 0: Success.
  * - < 0: Failure.
  */
-- (int)renewAgoraCDNSrcToken:(NSString *)token ts:(NSInteger)ts;
+- (int)renewAgoraCDNSrcToken:(NSString *)token ts:(NSInteger)ts NS_SWIFT_NAME(renewAgoraCDNSrcToken(_:ts:));
 
 /**
  * Switch the CDN source.
@@ -110,7 +111,7 @@ NS_ASSUME_NONNULL_BEGIN
  * - 0: Success.
  * - < 0: Failure.
  */
-- (int)switchAgoraCDNSrc:(NSString *)src syncPts:(BOOL)syncPts;
+- (int)switchAgoraCDNSrc:(NSString *)src syncPts:(BOOL)syncPts NS_SWIFT_NAME(switchAgoraCDNSrc(_:syncPts:));
 
 /**
  * Plays the media file.
@@ -118,22 +119,22 @@ NS_ASSUME_NONNULL_BEGIN
  * - 0: Success.
  * - < 0: Failure.
  */
-- (int)play;
+- (int)play NS_SWIFT_NAME(play());
 
 /**
  * Pauses playing the media file.
  */
-- (int)pause;
+- (int)pause NS_SWIFT_NAME(pause());
 
 /**
  * Stops playing the current media file.
  */
-- (int)stop;
+- (int)stop NS_SWIFT_NAME(stop());
 
 /**
  * Resumes playing the media file.
  */
-- (int)resume;
+- (int)resume NS_SWIFT_NAME(resume());
 
 /**
  * Sets the current playback position of the media file.
@@ -142,7 +143,7 @@ NS_ASSUME_NONNULL_BEGIN
  * - 0: Success.
  * - < 0: Failure.
  */
-- (int)seekToPosition:(NSInteger)position;
+- (int)seekToPosition:(NSInteger)position NS_SWIFT_NAME(seek(toPosition:));
 
 /**
   * Sets the pitch of the current media file.
@@ -155,20 +156,20 @@ NS_ASSUME_NONNULL_BEGIN
   * - 0: Success.
   * - < 0: Failure.
   */
-- (int)setAudioPitch:(NSInteger)pitch;
+- (int)setAudioPitch:(NSInteger)pitch NS_SWIFT_NAME(setAudioPitch(_:));
 
 /**
  * Gets the duration of the media file.
  */
-- (NSInteger)getDuration;
+- (NSInteger)getDuration NS_SWIFT_NAME(getDuration());
 /**
  * Gets the current playback position of the media file.(ms).
  */
-- (NSInteger)getPosition;
+- (NSInteger)getPosition NS_SWIFT_NAME(getPosition());
 /**
  * Gets the number of the media streams in the media resource.
  */
-- (NSInteger)getStreamCount;
+- (NSInteger)getStreamCount NS_SWIFT_NAME(getStreamCount());
 
 /** Gets the detailed information of the media stream.
 
@@ -178,7 +179,7 @@ NS_ASSUME_NONNULL_BEGIN
  stream. See AgoraMediaStreamInfo.
  * If the call fails and returns nil.
  */
-- (AgoraRtcMediaStreamInfo *_Nullable)getStreamByIndex:(int)index;
+- (AgoraRtcMediaStreamInfo *_Nullable)getStreamByIndex:(int)index NS_SWIFT_NAME(getStreamBy(_:));
 
 /**
  * Sets whether to loop the media file for playback.
@@ -190,7 +191,7 @@ NS_ASSUME_NONNULL_BEGIN
  * - 0: Success.
  * - < 0: Failure.
  */
-- (int)setLoopCount:(int)loopCount;
+- (int)setLoopCount:(int)loopCount NS_SWIFT_NAME(setLoopCount(_:));
 
 /**
  * Change playback speed
@@ -199,16 +200,33 @@ NS_ASSUME_NONNULL_BEGIN
  * - 0: Success.
  * - < 0: Failure.
  */
-- (int)setPlaybackSpeed:(int)speed;
+- (int)setPlaybackSpeed:(int)speed NS_SWIFT_NAME(setPlaybackSpeed(_:));
 
 /**
- * Slect playback audio track of the media file
- * @param index the index of the audio track in meia file
+ * Select playback audio track of the media file
+ * @param index the index of the audio track in media file
  * @return
  * - 0: Success.
  * - < 0: Failure.
  */
-- (int)selectAudioTrack:(int)index;
+- (int)selectAudioTrack:(int)index NS_SWIFT_NAME(selectAudioTrack(_:));
+
+/**
+  * Selects multi audio track of the media file for playback or publish to channel.
+  * @param playoutTrackIndex The index of the audio track in media file for local playback.
+  * @param publishTrackIndex The index of the audio track in the media file published to the remote.
+  *
+  * @note
+  * You can obtain the streamIndex of the audio track by calling getStreamInfo..
+  * If you want to use selectMultiAudioTrack, you need to open the media file with openWithMediaSource and set enableMultiAudioTrack to true.
+  *
+  * @return
+  * - 0: Success.
+  * - < 0: Failure. See {@link media::base::MEDIA_PLAYER_REASON MEDIA_PLAYER_REASON}.
+  * - -2: Invalid argument. Argument must be greater than or equal to zero.
+  * - -8: Invalid State.You must open the media file with openWithMediaSource and set enableMultiAudioTrack to true
+  */
+- (int)selectMultiAudioTrack:(NSInteger)playoutTrackIndex publishTrackIndex:(NSInteger)publishTrackIndex NS_SWIFT_NAME(selectMultiAudioTrack(_:publishTrackIndex:));
 
 /**
  * take screenshot while playing  video
@@ -217,7 +235,7 @@ NS_ASSUME_NONNULL_BEGIN
  * - 0: Success.
  * - < 0: Failure.
  */
-- (int)takeScreenshot:(NSString *)filename;
+- (int)takeScreenshot:(NSString *)filename NS_SWIFT_NAME(takeScreenshot(_:));
 
 /**
  * select internal subtitles in video
@@ -226,7 +244,7 @@ NS_ASSUME_NONNULL_BEGIN
  * - 0: Success.
  * - < 0: Failure.
  */
-- (int)selectInternalSubtitle:(int)index;
+- (int)selectInternalSubtitle:(int)index NS_SWIFT_NAME(selectInternalSubtitle(_:));
 
 /**
  * set an external subtitle for video
@@ -235,7 +253,7 @@ NS_ASSUME_NONNULL_BEGIN
  * - 0: Success.
  * - < 0: Failure.
  */
-- (int)setExternalSubtitle:(NSString *)url;
+- (int)setExternalSubtitle:(NSString *)url NS_SWIFT_NAME(setExternalSubtitle(_:));
 
 /** Gets current playback state.
 
@@ -243,7 +261,7 @@ NS_ASSUME_NONNULL_BEGIN
  AgoraMediaPlayerState.
  * The call fails and returns nil.
  */
-- (AgoraMediaPlayerState)getPlayerState;
+- (AgoraMediaPlayerState)getPlayerState NS_SWIFT_NAME(getPlayerState());
 
 /**
  * @brief Turn mute on or off
@@ -253,14 +271,14 @@ NS_ASSUME_NONNULL_BEGIN
  *   NO: No.
  * @return mute Whether to mute on
  */
-- (int)mute:(bool)isMute;
+- (int)mute:(bool)isMute NS_SWIFT_NAME(mute(_:));
 
 /**
  * @brief Get mute state
  *
  * @return mute Whether is mute on
  */
-- (BOOL)getMute;
+- (BOOL)getMute NS_SWIFT_NAME(getMute());
 
 /**
  * @brief Adjust playback volume
@@ -270,56 +288,70 @@ NS_ASSUME_NONNULL_BEGIN
  * 0: mute;
  * 100: original volume;
  * 400: Up to 4 times the original volume (with built-in overflow protection).
- * @return int < 0 on behalf of an error, the value corresponds to one of MEDIA_PLAYER_ERROR
+ * @return int < 0 on behalf of an error, the value corresponds to one of MEDIA_PLAYER_REASON
  */
-- (int)adjustPlayoutVolume:(int)volume;
+- (int)adjustPlayoutVolume:(int)volume NS_SWIFT_NAME(adjustPlayoutVolume(_:));
 
 /**
  * @brief Get the current playback volume
  *
  * @return  volume
  */
-- (int)getPlayoutVolume;
+- (int)getPlayoutVolume NS_SWIFT_NAME(getPlayoutVolume());
 
 /**
  * @brief adjust publish signal volume
  */
-- (int)adjustPublishSignalVolume:(int)volume;
+- (int)adjustPublishSignalVolume:(int)volume NS_SWIFT_NAME(adjustPublishSignalVolume(_:));
 
 /**
  * @brief get publish signal volume
  */
-- (int)getPublishSignalVolume;
+- (int)getPublishSignalVolume NS_SWIFT_NAME(getPublishSignalVolume());
 
 /**
- * @brief modify player option before play,
+ * @brief Modify player option before opening file or url,
  * @param [in] key
- *        the option key name reference AgoraConstants.h
+ *        the option key name 
  * @param [in] value
  *        the option value
- * @return int <= 0 On behalf of an error, the value corresponds to one of PLAYER_ERROR
+ * @return 
+ * - 0: Success.
+ * - < 0: Failure. See AgoraMediaPlayerReason.
  */
-- (int)setPlayerOption:(NSString *)key value:(NSInteger)value;
+- (int)setPlayerOption:(NSString *)key value:(NSInteger)value NS_SWIFT_NAME(setPlayerOption(_:value:));
+
+/**
+ * @brief Modify player option before opening file or url,
+ * @param [in] key
+ *        the option key name
+ * @param [in] value
+ *        the option value
+ * @return 
+ * - 0: Success.
+ * - < 0: Failure. See AgoraMediaPlayerReason.
+ */
+- (int)setPlayerOptionString:(NSString *)key value:(NSString *)value NS_SWIFT_NAME(setPlayerOptionString(_:value:));
 
 /**
  * @brief Set video rendering view
  */
-- (int)setView:(View *_Nullable)view;
+- (int)setView:(View *_Nullable)view NS_SWIFT_NAME(setView(_:));
 
 /**
  * @brief Set video display mode
  *
  * @param mode Video display mode
- * @return int < 0 on behalf of an error, the value corresponds to one of MEDIA_PLAYER_ERROR
+ * @return int < 0 on behalf of an error, the value corresponds to one of MEDIA_PLAYER_REASON
  */
-- (int)setRenderMode:(AgoraMediaPlayerRenderMode)mode;
+- (int)setRenderMode:(AgoraMediaPlayerRenderMode)mode NS_SWIFT_NAME(setRenderMode(_:));
 
 /**
  * Get the current play src.
  * @return
  * - current play src of raw bytes.
  */
-- (NSString *)getPlaySrc;
+- (NSString *)getPlaySrc NS_SWIFT_NAME(getPlaySrc());
 
 /**
  * Switch the media source when open a media through "open" API
@@ -329,7 +361,7 @@ NS_ASSUME_NONNULL_BEGIN
  * - 0: Success.
  * - < 0: Failure.
  */
-- (int)switchSrc:(NSString *)src syncPts:(BOOL)syncPts;
+- (int)switchSrc:(NSString *)src syncPts:(BOOL)syncPts NS_SWIFT_NAME(switchSrc(_:syncPts:));
 
 /**
  * Preload a media source
@@ -339,7 +371,7 @@ NS_ASSUME_NONNULL_BEGIN
  * - 0: Success.
  * - < 0: Failure.
  */
-- (int)preloadSrc:(NSString *)src startPos:(int)startPos;
+- (int)preloadSrc:(NSString *)src startPos:(int)startPos NS_SWIFT_NAME(preloadSrc(_:startPos:));
 
 /**
  * unload a media source
@@ -348,7 +380,7 @@ NS_ASSUME_NONNULL_BEGIN
  * - 0: Success.
  * - < 0: Failure.
  */
-- (int)unloadSrc:(NSString *)src;
+- (int)unloadSrc:(NSString *)src NS_SWIFT_NAME(unloadSrc(_:));
 
 /**
  * Play a pre-loaded media source
@@ -357,7 +389,7 @@ NS_ASSUME_NONNULL_BEGIN
  * - 0: Success.
  * - < 0: Failure.
  */
-- (int)playPreloadedSrc:(NSString *)src;
+- (int)playPreloadedSrc:(NSString *)src NS_SWIFT_NAME(playPreloadedSrc(_:));
 
 /** Set dual-mono output mode of the music file.
   @param mode The audio dual mono mode. See AgoraAudioDualMonoMode.
@@ -366,7 +398,7 @@ NS_ASSUME_NONNULL_BEGIN
   - 0: Success.
   - < 0: Failure.
   */
-- (int)setAudioDualMonoMode:(AgoraAudioDualMonoMode)mode;
+- (int)setAudioDualMonoMode:(AgoraAudioDualMonoMode)mode NS_SWIFT_NAME(setAudioDualMonoMode(_:));
 
 /**
  * @deprecated
@@ -382,7 +414,7 @@ NS_ASSUME_NONNULL_BEGIN
  */
 - (int)openWithCustomSourceAtStartPos:(NSInteger)startPos
                  withPlayerOnReadData:(AgoraRtcMediaPlayerCustomSourceOnReadCallback)onReadDataCallback
-                      andPlayerOnSeek:(AgoraRtcMediaPlayerCustomSourceOnSeekCallback)onSeekCallback;
+                      andPlayerOnSeek:(AgoraRtcMediaPlayerCustomSourceOnSeekCallback)onSeekCallback NS_SWIFT_NAME(openWithCustomSourceAtStartPos(_:withPlayerOnReadData:andPlayerOnSeek:)) __deprecated;
 
 /**
   * Set spatial audio params for the music file. It can be called after the media player
@@ -394,7 +426,7 @@ NS_ASSUME_NONNULL_BEGIN
   * - 0: Success.
   * - < 0: Failure.
   */
-- (int)setSpatialAudioParams:(AgoraSpatialAudioParams* _Nonnull)params;
+- (int)setSpatialAudioParams:(AgoraSpatialAudioParams* _Nonnull)params NS_SWIFT_NAME(setSpatialAudioParams(_:));
 
 #pragma mark Callback Audio PCM Frame
 
@@ -406,7 +438,7 @@ NS_ASSUME_NONNULL_BEGIN
  * - YES: Success.
  * - NO: Failure.
  */
-- (BOOL)setAudioFrameDelegate:(id<AgoraRtcMediaPlayerAudioFrameDelegate> _Nullable)delegate;
+- (BOOL)setAudioFrameDelegate:(id<AgoraRtcMediaPlayerAudioFrameDelegate> _Nullable)delegate NS_SWIFT_NAME(setAudioFrameDelegate(_:));
 
 #pragma mark Callback Video Frame
 
@@ -418,104 +450,13 @@ NS_ASSUME_NONNULL_BEGIN
  * - YES: Success.
  * - NO: Failure.
  */
-- (BOOL)setVideoFrameDelegate:(id<AgoraRtcMediaPlayerVideoFrameDelegate> _Nullable)delegate;
+- (BOOL)setVideoFrameDelegate:(id<AgoraRtcMediaPlayerVideoFrameDelegate> _Nullable)delegate NS_SWIFT_NAME(setVideoFrameDelegate(_:));
 
 - (int)registerMediaPlayerAudioSpectrumDelegate:(id<AgoraAudioSpectrumDelegate> _Nullable)delegate
-                                   intervalInMS:(NSUInteger)intervalInMS;
+                                   intervalInMS:(NSUInteger)intervalInMS NS_SWIFT_NAME(registerMediaPlayerAudioSpectrumDelegate(_:intervalInMS:));
 
-- (int)unregisterMediaPlayerAudioSpectrumDelegate:
-    (id<AgoraAudioSpectrumDelegate> _Nullable)delegate;
+- (int)unregisterMediaPlayerAudioSpectrumDelegate:(id<AgoraAudioSpectrumDelegate> _Nullable)delegate NS_SWIFT_NAME(unregisterMediaPlayerAudioSpectrumDelegate(_:));
 @end
 
-
-@protocol AgoraRtcMediaPlayerCacheManagerProtocol <NSObject>
-
-/**
- * Get shared cacheManager instance.
- * @return cacheManager instance.
- */
-+ (instancetype)sharedInstance;
-/**
- * Remove all media resource cache files.
- * @return
- * - 0: Success.
- * - < 0: Failure.
- */
-- (int)removeAllCaches;
-/**
- * Remove the latest media resource cache file.
- * @return
- * - 0: Success.
- * - < 0: Failure.
- */
-- (int)removeOldCache;
-/**
- * Remove the cache file by uri, setting by MediaSource.
- * @param uri URI，identify the uniqueness of the property, Set from `MeidaSource`
- * @return
- * - 0: Success.
- * - < 0: Failure.
- */
-- (int)removeCacheByUri:(NSString *)uri;
-/**
- * Set cache file path that files will be saved to.
- * @param cacheDir cacheDir path.
- * @return
- * - 0: Success.
- * - < 0: Failure.
- */
-- (int)setCacheDir:(NSString *)cacheDir;
-/**
- * Set the maximum number of cached files.
- * @param count maximum number of cached files.
- * @return
- * - 0: Success.
- * - < 0: Failure.
- */
-- (int)setMaxCacheFileCount:(NSInteger)count;
-/**
- * Set the total size of the largest cache file.
- * @param cacheSize total size of the largest cache file.
- * @return
- * - 0: Success.
- * - < 0: Failure.
- */
-- (int)setMaxCacheFileSize:(NSInteger)cacheSize;
-/**
- * Set whether the player will clean up the cache in the order of resource usage.
- * @param enable enable the player to automatically clear the cache.
- * @return
- * - 0: Success.
- * - < 0: Failure.
- */
-- (int)enableAutoRemoveCache:(BOOL)enable;
-/**
- * Get the cache directory you have set.
- * @return cacheDir
- */
-- (NSString *)cacheDir;
-/**
- * Get the maximum number of cached files.
- * @return
- * > 0: file count.
- * - < 0: Failure.
- */
-- (NSInteger)maxCacheFileCount;
-/**
- * Get the total size of the largest cache file
- * @return
- * > 0: file size.
- * - < 0: Failure.
- */
-- (NSInteger)maxCacheFileSize;
-/**
- * Get the number of all cache files.
- * @return
- * > 0: file count.
- * - < 0: Failure.
- */
-- (NSInteger)cacheFileCount;
-
-@end
 
 NS_ASSUME_NONNULL_END

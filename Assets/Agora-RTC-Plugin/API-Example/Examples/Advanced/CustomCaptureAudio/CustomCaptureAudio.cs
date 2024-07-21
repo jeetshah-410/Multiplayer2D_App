@@ -5,9 +5,16 @@ using UnityEngine.UI;
 using UnityEngine.Serialization;
 using System.Runtime.InteropServices;
 using Agora.Rtc;
-using Agora.Util;
-using Logger = Agora.Util.Logger;
+
 using RingBuffer;
+using io.agora.rtc.demo;
+using System.IO;
+using System.Collections.Generic;
+using UnityEngine.Analytics;
+using UnityEngine.Networking;
+using System.Collections;
+using System.Threading.Tasks;
+using System.Data.Common;
 
 namespace Agora_RTC_Plugin.API_Example.Examples.Advanced.CustomCaptureAudio
 {
@@ -33,19 +40,18 @@ namespace Agora_RTC_Plugin.API_Example.Examples.Advanced.CustomCaptureAudio
         public Text LogText;
         internal Logger Log;
         internal IRtcEngine RtcEngine = null;
+        internal uint AUDIO_TRACK_ID = 0;
+        // This depends on the audio file you open
+        private const int CHANNEL = 2;
+        // This depends on the audio file you open
+        private const int SAMPLE_RATE = 44100;
 
-        private const int CHANNEL = 1;
-        // Please do not change this value because Unity re-samples the sample rate to 48000.
-        private const int SAMPLE_RATE = 48000;
-        private const int PUSH_FREQ_PER_SEC = 100;
-
-        private RingBuffer<byte> _audioBuffer;
-        private bool _startConvertSignal = false;
+        // Number of push audio frame per second.
+        private const int PUSH_FREQ_PER_SEC = 20;
 
         private Thread _pushAudioFrameThread;
-        private System.Object _pushAudioFrameThreadSignal = new System.Object();
-        private int _count;
-        private bool _startSignal = false;
+        private System.Object _rtcLock = new System.Object();
+
 
 
         // Use this for initialization
@@ -55,7 +61,7 @@ namespace Agora_RTC_Plugin.API_Example.Examples.Advanced.CustomCaptureAudio
             if (CheckAppId())
             {
                 InitRtcEngine();
-                SetExternalAudioSource();
+                CreateCustomAudioSource();
                 JoinChannel();
                 StartPushAudioFrame();
             }
@@ -85,39 +91,111 @@ namespace Agora_RTC_Plugin.API_Example.Examples.Advanced.CustomCaptureAudio
 
         private void InitRtcEngine()
         {
-            RtcEngine = Agora.Rtc.RtcEngine.CreateAgoraRtcEngine();
+            lock (_rtcLock)
+            {
 
-            RtcEngineContext context = new RtcEngineContext(_appID, 0,
-                CHANNEL_PROFILE_TYPE.CHANNEL_PROFILE_LIVE_BROADCASTING,
-                AUDIO_SCENARIO_TYPE.AUDIO_SCENARIO_DEFAULT);
-            RtcEngine.Initialize(context);
-            RtcEngine.InitEventHandler(new UserEventHandler(this));
+                RtcEngine = Agora.Rtc.RtcEngine.CreateAgoraRtcEngine();
+
+                RtcEngineContext context = new RtcEngineContext();
+                context.appId = _appID;
+                context.channelProfile = CHANNEL_PROFILE_TYPE.CHANNEL_PROFILE_LIVE_BROADCASTING;
+                context.audioScenario = AUDIO_SCENARIO_TYPE.AUDIO_SCENARIO_DEFAULT;
+                context.areaCode = AREA_CODE.AREA_CODE_GLOB;
+
+                RtcEngine.Initialize(context);
+                RtcEngine.InitEventHandler(new UserEventHandler(this));
+            }
         }
 
-        private void SetExternalAudioSource()
+        private void CreateCustomAudioSource()
         {
-            var nRet = RtcEngine.SetExternalAudioSource(true, SAMPLE_RATE, CHANNEL, 1);
-            this.Log.UpdateLog("SetExternalAudioSource nRet:" + nRet);
+            lock (_rtcLock)
+            {
+                AudioTrackConfig audioTrackConfig = new AudioTrackConfig(true);
+                AUDIO_TRACK_ID = RtcEngine.CreateCustomAudioTrack(AUDIO_TRACK_TYPE.AUDIO_TRACK_MIXABLE, audioTrackConfig);
+                this.Log.UpdateLog("CreateCustomAudioTrack id:" + AUDIO_TRACK_ID);
+            }
         }
+
+        private IEnumerator PreparationFilePath(Action<string> callback)
+        {
+#if (UNITY_ANDROID || UNITY_IOS) && !UNITY_EDITOR          
+            string fromPath = Path.Combine(Application.streamingAssetsPath, "audio/pcm16.wav");
+            string filePath = Path.Combine(Application.persistentDataPath, "pcm16.wav");
+            if (fromPath.Contains("://") || fromPath.Contains(":///"))
+            {
+                using (UnityWebRequest www = UnityWebRequest.Get(fromPath))
+                {
+                    yield return www.SendWebRequest();
+
+
+                    if (www.result != UnityWebRequest.Result.Success)
+                    {
+                        Debug.LogError("Failed to load file: " + www.error);
+                    }
+                    else
+                    {
+
+                        try
+                        {
+                            File.WriteAllBytes(filePath, www.downloadHandler.data);
+                            Debug.Log("File successfully copied to " + filePath);
+                        }
+                        catch (Exception e)
+                        {
+                            Debug.LogError("Failed to save file: " + e.Message);
+                        }
+                    }
+                }
+            }
+            else
+            {
+                try
+                {
+                    File.Copy(fromPath, filePath, true);
+                    Debug.Log("File successfully copied to " + filePath);
+                }
+                catch (Exception e)
+                {
+                    Debug.LogError("Failed to copy file: " + e.Message);
+                }
+            }
+#else
+            string filePath = Path.Combine(Application.streamingAssetsPath, "audio/pcm16.wav");
+#endif
+
+            callback(filePath);
+            yield break;
+        }
+
 
         private void StartPushAudioFrame()
         {
-            // 1-sec-length buffer
-            var bufferLength = SAMPLE_RATE * CHANNEL;
-            _audioBuffer = new RingBuffer<byte>(bufferLength, true);
-            _startConvertSignal = true;
-
-            _pushAudioFrameThread = new Thread(PushAudioFrameThread);
-            _pushAudioFrameThread.Start();
+            Action<string> action = (filePath) =>
+            {
+                ParameterizedThreadStart threadStart = new ParameterizedThreadStart(PushAudioFrameThread);
+                _pushAudioFrameThread = new Thread(threadStart);
+                _pushAudioFrameThread.Start(filePath);
+            };
+            this.Log.UpdateLog("Because the api of rtcEngine is called in different threads, it is necessary to use locks to ensure that different threads do not call the api of rtcEngine at the same time");
+            StartCoroutine(PreparationFilePath(action));
         }
 
         private void JoinChannel()
         {
-            RtcEngine.SetAudioProfile(AUDIO_PROFILE_TYPE.AUDIO_PROFILE_MUSIC_HIGH_QUALITY,
+            lock (_rtcLock)
+            {
+                RtcEngine.SetAudioProfile(AUDIO_PROFILE_TYPE.AUDIO_PROFILE_MUSIC_HIGH_QUALITY,
                 AUDIO_SCENARIO_TYPE.AUDIO_SCENARIO_DEFAULT);
-            RtcEngine.EnableAudio();
-            RtcEngine.SetClientRole(CLIENT_ROLE_TYPE.CLIENT_ROLE_BROADCASTER);
-            RtcEngine.JoinChannel(_token, _channelName, "");
+                RtcEngine.EnableAudio();
+                RtcEngine.SetClientRole(CLIENT_ROLE_TYPE.CLIENT_ROLE_BROADCASTER);
+                ChannelMediaOptions channelMediaOptions = new ChannelMediaOptions();
+                channelMediaOptions.publishCustomAudioTrack.SetValue(true);
+                channelMediaOptions.publishCustomAudioTrackId.SetValue((int)AUDIO_TRACK_ID);
+                channelMediaOptions.publishMicrophoneTrack.SetValue(false);
+
+                RtcEngine.JoinChannel(_token, _channelName, 0, channelMediaOptions);
+            }
         }
 
         private void OnLeaveBtnClick()
@@ -128,30 +206,32 @@ namespace Agora_RTC_Plugin.API_Example.Examples.Advanced.CustomCaptureAudio
         private void OnDestroy()
         {
             Debug.Log("OnDestroy");
-            if (RtcEngine == null) return;
-            lock (_pushAudioFrameThreadSignal)
+
+            lock (_rtcLock)
             {
+                if (RtcEngine == null) return;
                 RtcEngine.InitEventHandler(null);
                 RtcEngine.LeaveChannel();
+                RtcEngine.DestroyCustomAudioTrack(AUDIO_TRACK_ID);
                 RtcEngine.Dispose();
                 RtcEngine = null;
             }
+            //need wait pullAudioFrameThread stop 
+            _pushAudioFrameThread.Join();
+
         }
 
-        private void PushAudioFrameThread()
+        private void PushAudioFrameThread(object file)
         {
+            string filePath = (string)file;
             var bytesPerSample = 2;
             var type = AUDIO_FRAME_TYPE.FRAME_TYPE_PCM16;
             var channels = CHANNEL;
             var samples = SAMPLE_RATE / PUSH_FREQ_PER_SEC;
             var samplesPerSec = SAMPLE_RATE;
-            var buffer = new byte[samples * bytesPerSample * CHANNEL];
+
             var freq = 1000 / PUSH_FREQ_PER_SEC;
 
-            var tic = DateTime.Now;
-
-
-            IntPtr audioFrameBuffer = Marshal.AllocHGlobal(buffer.Length);
             var audioFrame = new AudioFrame
             {
                 bytesPerSample = BYTES_PER_SAMPLE.TWO_BYTES_PER_SAMPLE,
@@ -159,77 +239,68 @@ namespace Agora_RTC_Plugin.API_Example.Examples.Advanced.CustomCaptureAudio
                 samplesPerChannel = samples,
                 samplesPerSec = samplesPerSec,
                 channels = channels,
-                buffer = (UInt64)audioFrameBuffer,
-                bufferPtr = audioFrameBuffer,
-                RawBuffer = buffer,
-                renderTimeMs = freq
+                RawBuffer = new byte[samples * bytesPerSample * CHANNEL],
+                renderTimeMs = 0
             };
 
+
+            double startMillisecond = GetTimestamp();
+            long tick = 0;
+            FileStream fileStream = new FileStream(filePath, FileMode.Open);
             while (true)
             {
-                lock (_pushAudioFrameThreadSignal)
+                int nRet = -1;
+                lock (_rtcLock)
                 {
                     if (RtcEngine == null)
                     {
                         break;
                     }
-                    var toc = DateTime.Now;
 
-                    if ((toc - tic).Milliseconds >= freq)
+                    int bytesRead =  fileStream.Read(audioFrame.RawBuffer, 0, audioFrame.RawBuffer.Length);
+                    nRet = RtcEngine.PushAudioFrame(audioFrame, AUDIO_TRACK_ID);
+
+                    if (bytesRead == 0)
                     {
-                        lock (_audioBuffer)
-                        {
-                            if (_audioBuffer.Size > samples * bytesPerSample * CHANNEL)
-                            {
-                                for (var j = 0; j < samples * bytesPerSample * CHANNEL; j++)
-                                {
-                                    buffer[j] = _audioBuffer.Get();
-                                }
-
-                                Marshal.Copy(buffer, 0, audioFrame.bufferPtr, buffer.Length);
-
-                                var ret = RtcEngine.PushAudioFrame(MEDIA_SOURCE_TYPE.AUDIO_PLAYOUT_SOURCE, audioFrame);
-                                Debug.Log("PushAudioFrame returns: " + ret);
-
-                                tic = toc;
-                            }
-                            else
-                            {
-                                tic = tic.AddMilliseconds(1);
-                            }
-                        }
-
+                        //Set the position of FileStream to return to the file header to restart reading data
+                        fileStream.Seek(0, SeekOrigin.Begin);
                     }
                 }
-                Thread.Sleep(1);
-            }
 
-
-            Marshal.FreeHGlobal(audioFrameBuffer);
-        }
-
-        private void OnAudioFilterRead(float[] data, int channels)
-        {
-            if (!_startConvertSignal) return;
-            var rescaleFactor = 32767;
-            foreach (var t in data)
-            {
-                var sample = t;
-                if (sample > 1) sample = 1;
-                else if (sample < -1) sample = -1;
-
-                var shortData = (short)(sample * rescaleFactor);
-                var byteArr = new byte[2];
-                byteArr = BitConverter.GetBytes(shortData);
-                lock (_audioBuffer)
+                if (nRet == 0)
                 {
-                    _audioBuffer.Put(byteArr[0]);
-                    _audioBuffer.Put(byteArr[1]);
+                    tick++;
+                    double nextMillisecond = startMillisecond + tick * freq;
+                    double curMillisecond = GetTimestamp();
+                    int sleepMillisecond = (int)Math.Ceiling(nextMillisecond - curMillisecond);
+                    Debug.Log("sleepMillisecond : " + sleepMillisecond);
+                    if (sleepMillisecond > 0)
+                    {
+                        Thread.Sleep(sleepMillisecond);
+                    }
+                    else
+                    {
+                        Debug.Log("Sleep 1ms--1");
+                        Thread.Sleep(1);
+                    }
+                }
+                else
+                {
+                    Debug.Log("Sleep freq");
+                    Thread.Sleep(freq);
+                    startMillisecond = GetTimestamp();
+                    tick = 0;
+
                 }
             }
+            fileStream.Close();
+        }
 
-            //_count += 1;
-            //if (_count == 20) _startSignal = true;
+        //get timestamp millisecond
+        private double GetTimestamp()
+        {
+            TimeSpan ts = DateTime.UtcNow - new DateTime(1970, 1, 1, 0, 0, 0, 0);
+            return ts.TotalMilliseconds;
         }
     }
 

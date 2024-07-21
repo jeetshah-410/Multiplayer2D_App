@@ -5,11 +5,13 @@ using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.Serialization;
 using Agora.Rtc;
-using Agora.Util;
-using Logger = Agora.Util.Logger;
+
+
 using Random = UnityEngine.Random;
 using System.IO;
 using System.Runtime.InteropServices;
+using io.agora.rtc.demo;
+using UnityEngine.Networking;
 
 namespace Agora_RTC_Plugin.API_Example.Examples.Advanced.MediaPlayerWithCustomDataProviderExample
 {
@@ -57,6 +59,20 @@ namespace Agora_RTC_Plugin.API_Example.Examples.Advanced.MediaPlayerWithCustomDa
                 InitEngine();
                 InitMediaPlayer();
                 JoinChannelWithMPK();
+
+#if UNITY_ANDROID && !UNITY_EDITOR
+                //In Android Platform, We need copy file to persistentDataPath.So we can read it.
+                if (File.Exists(Application.persistentDataPath + "/img/MPK.mp4"))
+                {
+                    this.Log.UpdateLog("MPK.mp4 already copy to persistentDataPath");
+                }
+                else
+                {
+                    this.Log.UpdateLog("Start CopyFileToPersistentDataPath");
+                    this.StartCoroutine(CopyFileToPersistentDataPath());
+                }
+#endif
+
             }
         }
 
@@ -116,9 +132,11 @@ namespace Agora_RTC_Plugin.API_Example.Examples.Advanced.MediaPlayerWithCustomDa
         {
             RtcEngine = Agora.Rtc.RtcEngine.CreateAgoraRtcEngine();
             UserEventHandler handler = new UserEventHandler(this);
-            RtcEngineContext context = new RtcEngineContext(_appID, 0,
-                CHANNEL_PROFILE_TYPE.CHANNEL_PROFILE_LIVE_BROADCASTING,
-                AUDIO_SCENARIO_TYPE.AUDIO_SCENARIO_GAME_STREAMING);
+            RtcEngineContext context = new RtcEngineContext();
+            context.appId = _appID;
+            context.channelProfile = CHANNEL_PROFILE_TYPE.CHANNEL_PROFILE_LIVE_BROADCASTING;
+            context.audioScenario = AUDIO_SCENARIO_TYPE.AUDIO_SCENARIO_GAME_STREAMING;
+            context.areaCode = AREA_CODE.AREA_CODE_GLOB;
             RtcEngine.Initialize(context);
             RtcEngine.InitEventHandler(handler);
             var logFile = Application.persistentDataPath + "/rtc.log";
@@ -188,29 +206,55 @@ namespace Agora_RTC_Plugin.API_Example.Examples.Advanced.MediaPlayerWithCustomDa
             this.Log.UpdateLog("Resume returns: " + ret);
         }
 
+        private System.Collections.IEnumerator CopyFileToPersistentDataPath()
+        {
+            var path = Application.streamingAssetsPath + "/img/MPK.mp4";
+            this.Log.UpdateLog("path: " + path);
+
+            UnityWebRequest webRequest = UnityWebRequest.Get(path);
+
+            yield return webRequest.SendWebRequest();
+
+            if (webRequest.isHttpError || webRequest.isNetworkError)
+            {
+                this.Log.UpdateLog(webRequest.error);
+            }
+            else
+            {
+                // Debug.Log(webRequest.downloadHandler.text);
+                byte[] bytes = webRequest.downloadHandler.data;
+                FileInfo file = new FileInfo(Application.persistentDataPath + "/MPK.mp4");
+                Stream stream = file.Create();
+                stream.Write(bytes, 0, bytes.Length);
+                stream.Close();
+                stream.Dispose();
+                this.Log.UpdateLog("MPK.mp4 already copy to persistentDataPath: " + Application.persistentDataPath + "/MPK.mp4");
+            }
+        }
+
         private void OnOpenButtonPress()
         {
             this.customDataProvider = new UserPlayerCustomDataProvider(this);
             string file;
+
 #if UNITY_ANDROID && !UNITY_EDITOR
-        // On Android, the StreamingAssetPath is just accessed by /assets instead of Application.streamingAssetPath
-            file = "/assets/img/MPK.mp4";
+            // On Android We already copy file into persistentDataPath
+            file = Application.persistentDataPath + "/MPK.mp4";
 #else
-            file = Application.streamingAssetsPath + "/img/" + "MPK.mp4";
+            file = Application.streamingAssetsPath + "/img/MPK.mp4";
 #endif
             this.customDataProvider.Open(file);
+            this.Log.UpdateLog("open file:" + file);
 
-            //var ret = MediaPlayer.OpenWithCustomSource(0, this.customDataProvider);
-            //this.Log.UpdateLog("OpenWithCustomSource: " + ret);
+            var ret = MediaPlayer.OpenWithCustomSource(0, this.customDataProvider);
+            this.Log.UpdateLog("OpenWithCustomSource: " + ret);
 
 
-            var source = new MediaSource();
-            source.url = null;
-            source.uri = null;
-            source.provider = this.customDataProvider;
-            source.autoPlay = false;
-            var ret = MediaPlayer.OpenWithMediaSource(source);
-            this.Log.UpdateLog("OpenWithMediaSource: " + ret);
+            //var source = new MediaSource();
+            //source.provider = this.customDataProvider;
+            //source.autoPlay = false;
+            //var ret = MediaPlayer.OpenWithMediaSource(source);
+            //this.Log.UpdateLog("OpenWithMediaSource: " + ret);
         }
 
 
@@ -283,8 +327,19 @@ namespace Agora_RTC_Plugin.API_Example.Examples.Advanced.MediaPlayerWithCustomDa
 
             videoSurface.OnTextureSizeModify += (int width, int height) =>
             {
-                float scale = (float)height / (float)width;
-                videoSurface.transform.localScale = new Vector3(-5, 5 * scale, 1);
+                var transform = videoSurface.GetComponent<RectTransform>();
+                if (transform)
+                {
+                    //If render in RawImage. just set rawImage size.
+                    transform.sizeDelta = new Vector2(width / 2, height / 2);
+                    transform.localScale = Vector3.one;
+                }
+                else
+                {
+                    //If render in MeshRenderer, just set localSize with MeshRenderer
+                    float scale = (float)height / (float)width;
+                    videoSurface.transform.localScale = new Vector3(-1, 1, scale);
+                }
                 Debug.Log("OnTextureSizeModify: " + width + "  " + height);
             };
         }
@@ -300,6 +355,12 @@ namespace Agora_RTC_Plugin.API_Example.Examples.Advanced.MediaPlayerWithCustomDa
             }
 
             go.name = goName;
+            var mesh = go.GetComponent<MeshRenderer>();
+            if (mesh != null)
+            {
+                Debug.LogWarning("VideoSureface update shader");
+                mesh.material = new Material(Shader.Find("Unlit/Texture"));
+            }
             // set up transform
             go.transform.Rotate(-90.0f, 0.0f, 0.0f);
             go.transform.position = Vector3.zero;
@@ -365,10 +426,10 @@ namespace Agora_RTC_Plugin.API_Example.Examples.Advanced.MediaPlayerWithCustomDa
             _sample = sample;
         }
 
-        public override void OnPlayerSourceStateChanged(MEDIA_PLAYER_STATE state, MEDIA_PLAYER_ERROR ec)
+        public override void OnPlayerSourceStateChanged(MEDIA_PLAYER_STATE state, MEDIA_PLAYER_REASON reason)
         {
             _sample.Log.UpdateLog(string.Format(
-                "OnPlayerSourceStateChanged state: {0}, ec: {1}, playId: {2}", state, ec, _sample.MediaPlayer.GetId()));
+                "OnPlayerSourceStateChanged state: {0}, ec: {1}, playId: {2}", state, reason, _sample.MediaPlayer.GetId()));
             Debug.Log("OnPlayerSourceStateChanged");
             if (state == MEDIA_PLAYER_STATE.PLAYER_STATE_OPEN_COMPLETED)
             {
@@ -425,7 +486,7 @@ namespace Agora_RTC_Plugin.API_Example.Examples.Advanced.MediaPlayerWithCustomDa
         }
 
         public override void OnClientRoleChanged(RtcConnection connection, CLIENT_ROLE_TYPE oldRole,
-            CLIENT_ROLE_TYPE newRole)
+            CLIENT_ROLE_TYPE newRole, ClientRoleOptions newRoleOptions)
         {
             _sample.Log.UpdateLog("OnClientRoleChanged");
         }
@@ -467,6 +528,10 @@ namespace Agora_RTC_Plugin.API_Example.Examples.Advanced.MediaPlayerWithCustomDa
                     fis = new FileStream(file, FileMode.Open, FileAccess.Read);
                     fileSize = fis.Length;
                     this._sample.Log.UpdateLog("open file sucess size: " + fileSize);
+                }
+                else
+                {
+                    this._sample.Log.UpdateLog("file not exists");
                 }
 
             }

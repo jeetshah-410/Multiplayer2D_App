@@ -2,8 +2,8 @@
 using UnityEngine.UI;
 using UnityEngine.Serialization;
 using Agora.Rtc;
-using Agora.Util;
-using Logger = Agora.Util.Logger;
+using io.agora.rtc.demo;
+
 
 namespace Agora_RTC_Plugin.API_Example.Examples.Advanced.ProcessVideoRawData
 {
@@ -49,7 +49,7 @@ namespace Agora_RTC_Plugin.API_Example.Examples.Advanced.ProcessVideoRawData
                 }
 
             }
-        
+
             get
             {
                 return _videoFrameWidth;
@@ -113,7 +113,7 @@ namespace Agora_RTC_Plugin.API_Example.Examples.Advanced.ProcessVideoRawData
                     _texture.Apply();
                 }
             }
-            else if(_needResize)
+            else if (_needResize)
             {
                 _texture.Reinitialize(_videoFrameWidth, _videoFrameHeight);
                 _texture.Apply();
@@ -139,7 +139,6 @@ namespace Agora_RTC_Plugin.API_Example.Examples.Advanced.ProcessVideoRawData
 
         void SetUpUI()
         {
-            var bufferLength = _videoFrameHeight * _videoFrameWidth * 4;
             _texture = new Texture2D(_videoFrameWidth, _videoFrameHeight, TextureFormat.RGBA32, false);
             _texture.Apply();
         }
@@ -148,12 +147,19 @@ namespace Agora_RTC_Plugin.API_Example.Examples.Advanced.ProcessVideoRawData
         {
             RtcEngine = Agora.Rtc.RtcEngine.CreateAgoraRtcEngine();
             UserEventHandler handler = new UserEventHandler(this);
-            RtcEngineContext context = new RtcEngineContext(_appID, 0,
-                CHANNEL_PROFILE_TYPE.CHANNEL_PROFILE_LIVE_BROADCASTING,
-                AUDIO_SCENARIO_TYPE.AUDIO_SCENARIO_DEFAULT);
+            RtcEngineContext context = new RtcEngineContext();
+            context.appId = _appID;
+            context.channelProfile = CHANNEL_PROFILE_TYPE.CHANNEL_PROFILE_LIVE_BROADCASTING;
+            context.audioScenario = AUDIO_SCENARIO_TYPE.AUDIO_SCENARIO_DEFAULT;
+            context.areaCode = AREA_CODE.AREA_CODE_GLOB;
             RtcEngine.Initialize(context);
             RtcEngine.InitEventHandler(handler);
-            RtcEngine.RegisterVideoFrameObserver(new VideoFrameObserver(this), OBSERVER_MODE.RAW_DATA);
+            RtcEngine.RegisterVideoFrameObserver(new VideoFrameObserver(this),
+                VIDEO_OBSERVER_FRAME_TYPE.FRAME_TYPE_RGBA,
+                VIDEO_MODULE_POSITION.POSITION_POST_CAPTURER |
+                VIDEO_MODULE_POSITION.POSITION_PRE_RENDERER |
+                VIDEO_MODULE_POSITION.POSITION_PRE_ENCODER,
+                OBSERVER_MODE.RAW_DATA);
         }
 
         void JoinChannel()
@@ -165,7 +171,7 @@ namespace Agora_RTC_Plugin.API_Example.Examples.Advanced.ProcessVideoRawData
             RtcEngine.SetClientRole(CLIENT_ROLE_TYPE.CLIENT_ROLE_BROADCASTER);
             RtcEngine.EnableAudio();
             RtcEngine.EnableVideo();
-            RtcEngine.JoinChannel(_token, _channelName);
+            RtcEngine.JoinChannel(_token, _channelName, "", 0);
         }
 
         private void OnDestroy()
@@ -235,7 +241,7 @@ namespace Agora_RTC_Plugin.API_Example.Examples.Advanced.ProcessVideoRawData
         }
 
         public override void OnClientRoleChanged(RtcConnection connection, CLIENT_ROLE_TYPE oldRole,
-            CLIENT_ROLE_TYPE newRole)
+            CLIENT_ROLE_TYPE newRole, ClientRoleOptions newRoleOptions)
         {
             _agoraVideoRawData.Log.UpdateLog("OnClientRoleChanged");
         }
@@ -262,7 +268,7 @@ namespace Agora_RTC_Plugin.API_Example.Examples.Advanced.ProcessVideoRawData
             _agoraVideoRawData = agoraVideoRawData;
         }
 
-        public override bool OnCaptureVideoFrame(VideoFrame videoFrame, VideoFrameBufferConfig config)
+        public override bool OnCaptureVideoFrame(VIDEO_SOURCE_TYPE type, VideoFrame videoFrame)
         {
             Debug.Log("OnCaptureVideoFrame-----------" + " width:" + videoFrame.width + " height:" +
                         videoFrame.height);
@@ -275,16 +281,11 @@ namespace Agora_RTC_Plugin.API_Example.Examples.Advanced.ProcessVideoRawData
             return true;
         }
 
-        public override bool OnRenderVideoFrame(string channelId, uint uid, VideoFrame videoFrame)
+        public override bool OnRenderVideoFrame(string channelId, uint remoteUid, VideoFrame videoFrame)
         {
-            Debug.Log("OnRenderVideoFrameHandler-----------" + " uid:" + uid + " width:" + videoFrame.width +
+            Debug.Log("OnRenderVideoFrameHandler-----------" + " uid:" + remoteUid + " width:" + videoFrame.width +
                         " height:" + videoFrame.height);
             return true;
-        }
-
-        public override VIDEO_OBSERVER_FRAME_TYPE GetVideoFormatPreference()
-        {
-            return VIDEO_OBSERVER_FRAME_TYPE.FRAME_TYPE_RGBA;
         }
     }
 

@@ -2,8 +2,7 @@
 using UnityEngine.UI;
 using UnityEngine.Serialization;
 using Agora.Rtc;
-using Agora.Util;
-using Logger = Agora.Util.Logger;
+using io.agora.rtc.demo;
 
 namespace Agora_RTC_Plugin.API_Example.Examples.Advanced.DualCamera
 {
@@ -48,10 +47,15 @@ namespace Agora_RTC_Plugin.API_Example.Examples.Advanced.DualCamera
         // Use this for initialization
         private void Start()
         {
-#if UNITY_IPHONE || UNITY_ANDROID
-            this.LogText.text = "iOS/Android is not supported, but you could see how it works on the Editor for Windows/MacOS";
+#if  UNITY_ANDROID
+            this.LogText.text = "Android is not supported, but you could see how it works on the Editor for Windows/MacOS";
 
 #else
+
+#if UNITY_IPHONE
+            this.LogText.text = "iPhone is only support in iPhone XR or better. iOS version is support in 13.0 or better";
+
+#endif
             LoadAssetData();
             if (CheckAppId())
             {
@@ -88,11 +92,15 @@ namespace Agora_RTC_Plugin.API_Example.Examples.Advanced.DualCamera
         {
             RtcEngine = Agora.Rtc.RtcEngine.CreateAgoraRtcEngineEx();
             UserEventHandler handler = new UserEventHandler(this);
-            RtcEngineContext context = new RtcEngineContext(_appID, 0,
-                CHANNEL_PROFILE_TYPE.CHANNEL_PROFILE_LIVE_BROADCASTING,
-                AUDIO_SCENARIO_TYPE.AUDIO_SCENARIO_DEFAULT);
+            RtcEngineContext context = new RtcEngineContext();
+            context.appId = _appID;
+            context.channelProfile = CHANNEL_PROFILE_TYPE.CHANNEL_PROFILE_LIVE_BROADCASTING;
+            context.audioScenario = AUDIO_SCENARIO_TYPE.AUDIO_SCENARIO_DEFAULT;
+            context.areaCode = AREA_CODE.AREA_CODE_GLOB;
             RtcEngine.Initialize(context);
             RtcEngine.InitEventHandler(handler);
+
+
         }
 
         public void MainCameraJoinChannel()
@@ -102,7 +110,7 @@ namespace Agora_RTC_Plugin.API_Example.Examples.Advanced.DualCamera
             RtcEngine.EnableVideo();
             RtcEngine.SetClientRole(CLIENT_ROLE_TYPE.CLIENT_ROLE_BROADCASTER);
 
-            var ret = RtcEngine.StartPrimaryCameraCapture(_config1);
+            var ret = RtcEngine.StartCameraCapture(VIDEO_SOURCE_TYPE.VIDEO_SOURCE_CAMERA, _config1);
             Log.UpdateLog(
                 string.Format("StartPrimaryCameraCapture returns: {0}", ret));
             ChannelMediaOptions options1 = new ChannelMediaOptions();
@@ -112,14 +120,14 @@ namespace Agora_RTC_Plugin.API_Example.Examples.Advanced.DualCamera
             options1.publishScreenTrack.SetValue(false);
             options1.enableAudioRecordingOrPlayout.SetValue(true);
             options1.clientRoleType.SetValue(CLIENT_ROLE_TYPE.CLIENT_ROLE_BROADCASTER);
-            ret = RtcEngine.JoinChannel(_token, _channelName, UID1, options1);
+            ret = RtcEngine.JoinChannelEx(_token, new RtcConnection(_channelName, UID1), options1);
             Debug.Log("MainCameraJoinChannel returns: " + ret);
         }
 
         public void MainCameraLeaveChannel()
         {
-            RtcEngine.StopPrimaryCameraCapture();
-            var ret = RtcEngine.LeaveChannel();
+            RtcEngine.StopCameraCapture(VIDEO_SOURCE_TYPE.VIDEO_SOURCE_CAMERA);
+            var ret = RtcEngine.LeaveChannelEx(new RtcConnection(_channelName, UID1));
             Debug.Log("MainCameraLeaveChannel returns: " + ret);
         }
 
@@ -147,7 +155,7 @@ namespace Agora_RTC_Plugin.API_Example.Examples.Advanced.DualCamera
             var connection = new RtcConnection();
             connection.channelId = _channelName;
             connection.localUid = UID1;
-            RtcEngine.UpdateChannelMediaOptions(options1);
+            RtcEngine.UpdateChannelMediaOptionsEx(options1, connection);
 
             MainPublishButton.gameObject.SetActive(true);
             MainUnpublishButton.gameObject.SetActive(false);
@@ -156,7 +164,17 @@ namespace Agora_RTC_Plugin.API_Example.Examples.Advanced.DualCamera
 
         public void SecondCameraJoinChannel()
         {
-            var ret = RtcEngine.StartSecondaryCameraCapture(_config2);
+
+#if UNITY_IPHONE
+            CameraCapturerConfiguration cameraCapturerConfiguration = new CameraCapturerConfiguration();
+            cameraCapturerConfiguration.cameraDirection.SetValue(CAMERA_DIRECTION.CAMERA_REAR);
+            int nRet = RtcEngine.EnableMultiCamera(true, cameraCapturerConfiguration);
+            this.Log.UpdateLog("EnableMultiCamera :" + nRet);
+
+            _config2.cameraDirection.SetValue(CAMERA_DIRECTION.CAMERA_REAR);
+#endif
+
+            var ret = RtcEngine.StartCameraCapture(VIDEO_SOURCE_TYPE.VIDEO_SOURCE_CAMERA_SECONDARY, _config2);
             Log.UpdateLog(
                 string.Format("StartSecondaryCameraCapture returns: {0}", ret));
             ChannelMediaOptions options2 = new ChannelMediaOptions();
@@ -173,8 +191,8 @@ namespace Agora_RTC_Plugin.API_Example.Examples.Advanced.DualCamera
 
         public void SecondCameraLeaveChannel()
         {
-            RtcEngine.StopSecondaryCameraCapture();
-            var ret = RtcEngine.LeaveChannelEx(new RtcConnection(_channelName, 456));
+            RtcEngine.StopCameraCapture(VIDEO_SOURCE_TYPE.VIDEO_SOURCE_CAMERA_SECONDARY);
+            var ret = RtcEngine.LeaveChannelEx(new RtcConnection(_channelName, UID2));
             Debug.Log("SecondCameraLeaveChannel returns: " + ret);
         }
 
@@ -220,16 +238,27 @@ namespace Agora_RTC_Plugin.API_Example.Examples.Advanced.DualCamera
             }
 
             _config1 = new CameraCapturerConfiguration();
-            _config1.deviceId = _videoDeviceInfos[0].deviceId;
-            Debug.Log("PrimaryCamera: " + _config1.deviceId);
-            _config1.format = new VideoFormat();
-
-            if (_videoDeviceInfos.Length > 1)
+            if (_videoDeviceInfos.Length >= 1)
             {
-                _config2 = new CameraCapturerConfiguration();
-                _config2.deviceId = _videoDeviceInfos[1].deviceId;
+
+                _config1.deviceId.SetValue(_videoDeviceInfos[0].deviceId);
+                Debug.Log("PrimaryCamera: " + _config1.deviceId);
+                _config1.format = new VideoFormat();
+            }
+
+
+            _config2 = new CameraCapturerConfiguration();
+            if (_videoDeviceInfos.Length >= 2)
+            {
+
+                _config2.deviceId.SetValue(_videoDeviceInfos[1].deviceId);
                 Debug.Log("SecondaryCamera: " + _config2.deviceId);
                 _config2.format = new VideoFormat();
+            }
+
+            if (_videoDeviceInfos.Length < 2)
+            {
+                Log.UpdateLog("You do not have mult camera, this case cant work!!!!");
             }
         }
 
@@ -238,9 +267,9 @@ namespace Agora_RTC_Plugin.API_Example.Examples.Advanced.DualCamera
             Debug.Log("OnDestroy");
             if (RtcEngine == null) return;
             RtcEngine.InitEventHandler(null);
-            RtcEngine.StopSecondaryCameraCapture();
-            RtcEngine.StopPrimaryCameraCapture();
-            RtcEngine.LeaveChannelEx(new RtcConnection(_channelName, 456));
+            RtcEngine.StopCameraCapture(VIDEO_SOURCE_TYPE.VIDEO_SOURCE_CAMERA);
+            RtcEngine.StopCameraCapture(VIDEO_SOURCE_TYPE.VIDEO_SOURCE_CAMERA_SECONDARY);
+            RtcEngine.LeaveChannelEx(new RtcConnection(_channelName, UID2));
             RtcEngine.LeaveChannel();
             RtcEngine.Dispose();
         }
@@ -282,8 +311,19 @@ namespace Agora_RTC_Plugin.API_Example.Examples.Advanced.DualCamera
 
             videoSurface.OnTextureSizeModify += (int width, int height) =>
             {
-                float scale = (float)height / (float)width;
-                videoSurface.transform.localScale = new Vector3(-5, 5 * scale, 1);
+                var transform = videoSurface.GetComponent<RectTransform>();
+                if (transform)
+                {
+                    //If render in RawImage. just set rawImage size.
+                    transform.sizeDelta = new Vector2(width / 2, height / 2);
+                    transform.localScale = Vector3.one;
+                }
+                else
+                {
+                    //If render in MeshRenderer, just set localSize with MeshRenderer
+                    float scale = (float)height / (float)width;
+                    videoSurface.transform.localScale = new Vector3(-1, 1, scale);
+                }
                 Debug.Log("OnTextureSizeModify: " + width + "  " + height);
             };
 
@@ -307,6 +347,12 @@ namespace Agora_RTC_Plugin.API_Example.Examples.Advanced.DualCamera
             }
 
             go.name = goName;
+            var mesh = go.GetComponent<MeshRenderer>();
+            if (mesh != null)
+            {
+                Debug.LogWarning("VideoSureface update shader");
+                mesh.material = new Material(Shader.Find("Unlit/Texture"));
+            }
             // set up transform
             go.transform.Rotate(-90.0f, 0.0f, 0.0f);
             go.transform.position = Vector3.zero;
@@ -423,7 +469,7 @@ namespace Agora_RTC_Plugin.API_Example.Examples.Advanced.DualCamera
         }
 
         public override void OnClientRoleChanged(RtcConnection connection, CLIENT_ROLE_TYPE oldRole,
-            CLIENT_ROLE_TYPE newRole)
+            CLIENT_ROLE_TYPE newRole, ClientRoleOptions newRoleOptions)
         {
             _videoSample.Log.UpdateLog("OnClientRoleChanged");
         }

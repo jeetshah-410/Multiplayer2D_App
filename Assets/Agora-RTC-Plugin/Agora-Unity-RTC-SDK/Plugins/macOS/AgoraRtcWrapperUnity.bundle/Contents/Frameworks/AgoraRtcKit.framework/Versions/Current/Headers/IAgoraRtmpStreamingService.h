@@ -12,6 +12,7 @@
 #include "AgoraRefPtr.h"
 #include "IAgoraService.h"
 #include "NGIAgoraRtcConnection.h"
+#include <aosl/api/cpp/aosl_ares_class.h>
 
 namespace agora {
 namespace rtc {
@@ -51,13 +52,13 @@ public:
    *
    * @param url The RTMP URL address.
    * @param state The RTMP streaming state: #RTMP_STREAM_PUBLISH_STATE.
-   * @param errCode The detailed error information for streaming: #RTMP_STREAM_PUBLISH_ERROR_TYPE.
+   * @param reason The detailed error information for streaming: #RTMP_STREAM_PUBLISH_REASON.
    */
   virtual void onRtmpStreamingStateChanged(const char* url, RTMP_STREAM_PUBLISH_STATE state,
-                                           RTMP_STREAM_PUBLISH_ERROR_TYPE errCode) {
+                                           RTMP_STREAM_PUBLISH_REASON reason) {
     (void)url;
     (void)state;
-    (void)errCode;
+    (void)reason;
   }
 
   /** Reports events during the RTMP or RTMPS streaming.
@@ -105,10 +106,11 @@ class IRtmpStreamingService : public RefCountInterface {
     * @return
     * - 0: Success.
     * - < 0: Failure.
-    * - #ERR_INVALID_ARGUMENT (2): The RTMP URL address is NULL or has a string length of 0.
-    * - #ERR_NOT_INITIALIZED (7): You have not initialized the RTC engine when publishing the stream.
+    *   - #ERR_INVALID_ARGUMENT (2): The RTMP URL address is NULL or has a string length of 0.
+    *   - #ERR_NOT_INITIALIZED (7): You have not initialized the RTC engine when publishing the stream.
+    *   - #ERR_ALREADY_IN_USE (19): This streaming URL is already in use. Use a new streaming URL for CDN streaming.
     */
-  virtual int startRtmpStreamWithoutTranscoding(const char* url) = 0;
+  virtual int startRtmpStreamWithoutTranscoding(const char* url, aosl_ref_t ares = AOSL_REF_INVALID) = 0;
 
   /** Publishes the local stream with transcoding to a specified CDN live RTMP address.  (CDN live only.)
 
@@ -129,8 +131,9 @@ class IRtmpStreamingService : public RefCountInterface {
     * - < 0: Failure.
     *   - #ERR_INVALID_ARGUMENT (2): The RTMP URL address is NULL or has a string length of 0.
     *   - #ERR_NOT_INITIALIZED (7): You have not initialized the RTC engine when publishing the stream.
+    *   - #ERR_ALREADY_IN_USE (19): This streaming URL is already in use. Use a new streaming URL for CDN streaming.
     */
-  virtual int startRtmpStreamWithTranscoding(const char* url, const LiveTranscoding& transcoding) = 0;
+  virtual int startRtmpStreamWithTranscoding(const char* url, const LiveTranscoding& transcoding, aosl_ref_t ares = AOSL_REF_INVALID) = 0;
 
   /** Update the video layout and audio settings for CDN live. (CDN live only.)
     * @note This method applies to Live Broadcast only.
@@ -141,7 +144,7 @@ class IRtmpStreamingService : public RefCountInterface {
     * - 0: Success.
     * - < 0: Failure.
     */
-  virtual int updateRtmpTranscoding(const LiveTranscoding& transcoding) = 0;
+  virtual int updateRtmpTranscoding(const LiveTranscoding& transcoding, aosl_ref_t ares = AOSL_REF_INVALID) = 0;
   /** Stop an RTMP stream with transcoding or without transcoding from the CDN. (CDN live only.)
 
     * This method removes the RTMP URL address (added by the \ref IRtcEngine::startRtmpStreamWithoutTranscoding "startRtmpStreamWithoutTranscoding" method
@@ -160,7 +163,7 @@ class IRtmpStreamingService : public RefCountInterface {
     * - 0: Success.
     * - < 0: Failure.
     */
-  virtual int stopRtmpStream(const char* url) = 0;
+  virtual int stopRtmpStream(const char* url, aosl_ref_t ares = AOSL_REF_INVALID) = 0;
 
   /**
    * Registers an RTMP streaming observer.
@@ -169,7 +172,7 @@ class IRtmpStreamingService : public RefCountInterface {
    * - 0: Success.
    * - < 0: Failure.
    */
-  virtual int registerObserver(IRtmpStreamingObserver* observer) = 0;
+  virtual int registerObserver(IRtmpStreamingObserver* observer, aosl_ref_t ares = AOSL_REF_INVALID) = 0;
   /**
    * Releases the RTMP streaming observer created by registerObserver().
    * @param observer The pointer to the RTMP streaming observer that you want to release. See \ref agora::rtc::IRtmpStreamingObserver "IRtmpStreamingObserver".

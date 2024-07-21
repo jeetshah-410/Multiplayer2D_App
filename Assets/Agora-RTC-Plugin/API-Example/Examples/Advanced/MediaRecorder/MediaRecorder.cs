@@ -2,13 +2,13 @@
 using UnityEngine.UI;
 using UnityEngine.Serialization;
 using Agora.Rtc;
-using Agora.Util;
-using Logger = Agora.Util.Logger;
+using io.agora.rtc.demo;
+
 
 namespace Agora_RTC_Plugin.API_Example.Examples.Advanced.MediaRecorder
 {
-	public class MediaRecorder : MonoBehaviour
-	{
+    public class MediaRecorder : MonoBehaviour
+    {
         [FormerlySerializedAs("appIdInput")]
         [SerializeField]
         private AppIdInput _appIdInput;
@@ -30,12 +30,11 @@ namespace Agora_RTC_Plugin.API_Example.Examples.Advanced.MediaRecorder
         internal Logger Log;
         internal IRtcEngine RtcEngine = null;
         internal IMediaPlayer MediaPlayer = null;
-        internal RtcConnection SelfConnection = null;
-        internal IMediaRecorder Recorder = null;
+        internal IMediaRecorder LocalRecorder = null;
 
         private Button _button1;
         private Button _button2;
-   
+
 
         // Use this for initialization
         private void Start()
@@ -63,7 +62,7 @@ namespace Agora_RTC_Plugin.API_Example.Examples.Advanced.MediaRecorder
             _button1.onClick.AddListener(OnStartButtonPress);
             _button2 = GameObject.Find("Button2").GetComponent<Button>();
             _button2.onClick.AddListener(OnStopButtonPress);
-            
+
         }
 
         public void EnableUI(bool val)
@@ -95,19 +94,15 @@ namespace Agora_RTC_Plugin.API_Example.Examples.Advanced.MediaRecorder
         {
             RtcEngine = Agora.Rtc.RtcEngine.CreateAgoraRtcEngine();
             UserEventHandler handler = new UserEventHandler(this);
-            RtcEngineContext context = new RtcEngineContext(_appID, 0,
-                CHANNEL_PROFILE_TYPE.CHANNEL_PROFILE_LIVE_BROADCASTING,
-                AUDIO_SCENARIO_TYPE.AUDIO_SCENARIO_GAME_STREAMING);
+            RtcEngineContext context = new RtcEngineContext();
+            context.appId = _appID;
+            context.channelProfile = CHANNEL_PROFILE_TYPE.CHANNEL_PROFILE_LIVE_BROADCASTING;
+            context.audioScenario = AUDIO_SCENARIO_TYPE.AUDIO_SCENARIO_DEFAULT;
+            context.areaCode = AREA_CODE.AREA_CODE_GLOB;
             RtcEngine.Initialize(context);
             RtcEngine.InitEventHandler(handler);
         }
 
-        internal void InitMediaRecorder()
-        {
-            Recorder = RtcEngine.GetMediaRecorder();
-            var nRet = Recorder.SetMediaRecorderObserver(SelfConnection, new MediaRecorderObserver(this));
-            this.Log.UpdateLog("SetMediaRecorderObserver:" + nRet);
-        }
 
         private void JoinChannel()
         {
@@ -132,18 +127,18 @@ namespace Agora_RTC_Plugin.API_Example.Examples.Advanced.MediaRecorder
             var config = new MediaRecorderConfiguration();
             config.storagePath = Application.persistentDataPath + "/record.mp4";
             config.recorderInfoUpdateInterval = 5;
-            var nRet = Recorder.StartRecording(this.SelfConnection, config);
+            var nRet = LocalRecorder.StartRecording(config);
             this.Log.UpdateLog("StartRecording:" + nRet);
             this.Log.UpdateLog("storagePath: " + config.storagePath);
         }
 
         private void OnStopButtonPress()
         {
-            var nRet = Recorder.StopRecording(this.SelfConnection);
+            var nRet = LocalRecorder.StopRecording();
             this.Log.UpdateLog("StopRecording:" + nRet);
         }
 
-    
+
         private void OnDestroy()
         {
             Debug.Log("OnDestroy");
@@ -179,8 +174,19 @@ namespace Agora_RTC_Plugin.API_Example.Examples.Advanced.MediaRecorder
 
             videoSurface.OnTextureSizeModify += (int width, int height) =>
             {
-                float scale = (float)height / (float)width;
-                videoSurface.transform.localScale = new Vector3(-5, 5 * scale, 1);
+                var transform = videoSurface.GetComponent<RectTransform>();
+                if (transform)
+                {
+                    //If render in RawImage. just set rawImage size.
+                    transform.sizeDelta = new Vector2(width / 2, height / 2);
+                    transform.localScale = Vector3.one;
+                }
+                else
+                {
+                    //If render in MeshRenderer, just set localSize with MeshRenderer
+                    float scale = (float)height / (float)width;
+                    videoSurface.transform.localScale = new Vector3(-1, 1, scale);
+                }
                 Debug.Log("OnTextureSizeModify: " + width + "  " + height);
             };
         }
@@ -196,6 +202,12 @@ namespace Agora_RTC_Plugin.API_Example.Examples.Advanced.MediaRecorder
             }
 
             go.name = goName;
+            var mesh = go.GetComponent<MeshRenderer>();
+            if (mesh != null)
+            {
+                Debug.LogWarning("VideoSureface update shader");
+                mesh.material = new Material(Shader.Find("Unlit/Texture"));
+            }
             // set up transform
             go.transform.Rotate(-90.0f, 0.0f, 0.0f);
             go.transform.position = Vector3.zero;
@@ -278,10 +290,12 @@ namespace Agora_RTC_Plugin.API_Example.Examples.Advanced.MediaRecorder
             _sample.Log.UpdateLog(
                 string.Format("OnJoinChannelSuccess channelName: {0}, uid: {1}, elapsed: {2}",
                     connection.channelId, connection.localUid, elapsed));
-            _sample.SelfConnection = connection;
+
+            _sample.LocalRecorder = _sample.RtcEngine.CreateMediaRecorder(new RecorderStreamInfo(connection.channelId, connection.localUid));
+            _sample.LocalRecorder.SetMediaRecorderObserver(new MediaRecorderObserver(_sample));
             _sample.EnableUI(true);
             MediaRecorder.MakeVideoView(0);
-            _sample.InitMediaRecorder();
+
         }
 
         public override void OnRejoinChannelSuccess(RtcConnection connection, int elapsed)
@@ -296,7 +310,7 @@ namespace Agora_RTC_Plugin.API_Example.Examples.Advanced.MediaRecorder
         }
 
         public override void OnClientRoleChanged(RtcConnection connection, CLIENT_ROLE_TYPE oldRole,
-            CLIENT_ROLE_TYPE newRole)
+            CLIENT_ROLE_TYPE newRole, ClientRoleOptions newRoleOptions)
         {
             _sample.Log.UpdateLog("OnClientRoleChanged");
         }
@@ -323,14 +337,14 @@ namespace Agora_RTC_Plugin.API_Example.Examples.Advanced.MediaRecorder
             _sample = sample;
         }
 
-        public override void OnRecorderInfoUpdated(RecorderInfo info)
+        public override void OnRecorderInfoUpdated(string channelId, uint uid, RecorderInfo info)
         {
             _sample.Log.UpdateLog(string.Format("OnRecorderInfoUpdated fileName: {0}, durationMs: {1} fileSize：{2}", info.fileName, info.durationMs, info.fileSize));
         }
 
-        public override void OnRecorderStateChanged(RecorderState state, RecorderErrorCode error)
+        public override void OnRecorderStateChanged(string channelId, uint uid, RecorderState state, RecorderReasonCode reason)
         {
-            _sample.Log.UpdateLog(string.Format("OnRecorderStateChanged state: {0}, error: {1}", state, error));
+            _sample.Log.UpdateLog(string.Format("OnRecorderStateChanged state: {0}, error: {1}", state, reason));
 
         }
     }

@@ -3,10 +3,11 @@ using UnityEngine.UI;
 using UnityEngine.Serialization;
 using UnityEngine.SceneManagement;
 using Agora.Rtc;
-using Agora.Util;
-using Logger = Agora.Util.Logger;
+
+
 using System.IO;
 using System;
+using io.agora.rtc.demo;
 
 namespace Agora_RTC_Plugin.API_Example.Examples.Advanced.StartRhythmPlayer
 {
@@ -43,7 +44,7 @@ namespace Agora_RTC_Plugin.API_Example.Examples.Advanced.StartRhythmPlayer
                 InitEngine();
                 JoinChannel();
             }
-           
+
         }
 
         private void Update()
@@ -79,15 +80,23 @@ namespace Agora_RTC_Plugin.API_Example.Examples.Advanced.StartRhythmPlayer
 
             btn = this.gameObject.transform.Find("ConfigButton").GetComponent<Button>();
             btn.onClick.AddListener(OnConfigButtonPress);
+
+            btn = this.gameObject.transform.Find("PublishButton").GetComponent<Button>();
+            btn.onClick.AddListener(OnPublishButtonPress);
+
+            btn = this.gameObject.transform.Find("UnpublishButton").GetComponent<Button>();
+            btn.onClick.AddListener(OnUnpublishButtonPress);
         }
 
         private void InitEngine()
         {
             RtcEngine = Agora.Rtc.RtcEngine.CreateAgoraRtcEngine();
             UserEventHandler handler = new UserEventHandler(this);
-            RtcEngineContext context = new RtcEngineContext(_appID, 0,
-                                        CHANNEL_PROFILE_TYPE.CHANNEL_PROFILE_LIVE_BROADCASTING,
-                                        AUDIO_SCENARIO_TYPE.AUDIO_SCENARIO_DEFAULT);
+            RtcEngineContext context = new RtcEngineContext();
+            context.appId = _appID;
+            context.channelProfile = CHANNEL_PROFILE_TYPE.CHANNEL_PROFILE_LIVE_BROADCASTING;
+            context.audioScenario = AUDIO_SCENARIO_TYPE.AUDIO_SCENARIO_DEFAULT;
+            context.areaCode = AREA_CODE.AREA_CODE_GLOB;
             RtcEngine.Initialize(context);
             RtcEngine.InitEventHandler(handler);
         }
@@ -97,7 +106,7 @@ namespace Agora_RTC_Plugin.API_Example.Examples.Advanced.StartRhythmPlayer
             RtcEngine.EnableAudio();
             RtcEngine.EnableVideo();
             RtcEngine.SetClientRole(CLIENT_ROLE_TYPE.CLIENT_ROLE_BROADCASTER);
-            RtcEngine.JoinChannel(_token, _channelName);
+            RtcEngine.JoinChannel(_token, _channelName, "", 0);
         }
 
         private void OnStartButtonPress()
@@ -136,6 +145,22 @@ namespace Agora_RTC_Plugin.API_Example.Examples.Advanced.StartRhythmPlayer
             int nRet = RtcEngine.ConfigRhythmPlayer(config);
             this.Log.UpdateLog("ConfigRhythmPlayer nRet:" + nRet);
             this.Log.UpdateLog("beatsPerMeasure is config from 4 to 6");
+        }
+
+        private void OnPublishButtonPress()
+        {
+            ChannelMediaOptions options = new ChannelMediaOptions();
+            options.publishRhythmPlayerTrack.SetValue(true);
+            int nRet = RtcEngine.UpdateChannelMediaOptions(options);
+            this.Log.UpdateLog("UpdateChannelMediaOptions publish rhythmPlayerTrack:" + nRet);
+        }
+
+        private void OnUnpublishButtonPress()
+        {
+            ChannelMediaOptions options = new ChannelMediaOptions();
+            options.publishRhythmPlayerTrack.SetValue(false);
+            int nRet = RtcEngine.UpdateChannelMediaOptions(options);
+            this.Log.UpdateLog("UpdateChannelMediaOptions unpublish rhythmPlayerTrack:" + nRet);
         }
 
         private void OnDestroy()
@@ -191,7 +216,7 @@ namespace Agora_RTC_Plugin.API_Example.Examples.Advanced.StartRhythmPlayer
 
         }
 
-        public override void OnClientRoleChanged(RtcConnection connection, CLIENT_ROLE_TYPE oldRole, CLIENT_ROLE_TYPE newRole)
+        public override void OnClientRoleChanged(RtcConnection connection, CLIENT_ROLE_TYPE oldRole, CLIENT_ROLE_TYPE newRole, ClientRoleOptions newRoleOptions)
         {
             _startRhythmPlayer.Log.UpdateLog("OnClientRoleChanged");
         }
@@ -208,9 +233,9 @@ namespace Agora_RTC_Plugin.API_Example.Examples.Advanced.StartRhythmPlayer
                 (int)reason));
         }
 
-        public override void OnRhythmPlayerStateChanged(RHYTHM_PLAYER_STATE_TYPE state, RHYTHM_PLAYER_ERROR_TYPE errorCode)
+        public override void OnRhythmPlayerStateChanged(RHYTHM_PLAYER_STATE_TYPE state, RHYTHM_PLAYER_REASON reason)
         {
-            _startRhythmPlayer.Log.UpdateLog(string.Format("OnRhythmPlayerStateChanged {0},{1}", state, errorCode));
+            _startRhythmPlayer.Log.UpdateLog(string.Format("OnRhythmPlayerStateChanged {0},{1}", state, reason));
         }
 
     }

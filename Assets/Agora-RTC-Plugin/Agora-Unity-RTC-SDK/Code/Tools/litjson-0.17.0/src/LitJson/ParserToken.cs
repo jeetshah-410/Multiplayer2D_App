@@ -8,8 +8,14 @@
  **/
 #endregion
 
+#define AGORA_RTC
 
+
+#if AGORA_RTC
 namespace Agora.Rtc.LitJson
+#elif AGORA_RTM
+namespace Agora.Rtm.LitJson
+#endif
 {
     internal enum ParserToken
     {

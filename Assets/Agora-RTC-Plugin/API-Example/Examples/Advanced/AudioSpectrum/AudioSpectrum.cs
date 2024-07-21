@@ -5,8 +5,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.Serialization;
 using Agora.Rtc;
-using Agora.Util;
-using Logger = Agora.Util.Logger;
+using io.agora.rtc.demo;
 
 namespace Agora_RTC_Plugin.API_Example.Examples.Advanced.AudioSpectrum
 {
@@ -69,7 +68,7 @@ namespace Agora_RTC_Plugin.API_Example.Examples.Advanced.AudioSpectrum
             lock (data)
             {
                 if (data.Count > 0)
-                { 
+                {
                     for (var i = 0; i < this.data.Count; i++)
                     {
                         var height = (-data[i] + 1);
@@ -132,9 +131,10 @@ namespace Agora_RTC_Plugin.API_Example.Examples.Advanced.AudioSpectrum
         {
             RtcEngine = Agora.Rtc.RtcEngine.CreateAgoraRtcEngine();
             UserEventHandler handler = new UserEventHandler(this);
-            RtcEngineContext context = new RtcEngineContext(_appID, 0,
-                CHANNEL_PROFILE_TYPE.CHANNEL_PROFILE_LIVE_BROADCASTING,
-                AUDIO_SCENARIO_TYPE.AUDIO_SCENARIO_GAME_STREAMING);
+            RtcEngineContext context = new RtcEngineContext();
+            context.appId = _appID;
+            context.channelProfile = CHANNEL_PROFILE_TYPE.CHANNEL_PROFILE_LIVE_BROADCASTING;
+            context.audioScenario = AUDIO_SCENARIO_TYPE.AUDIO_SCENARIO_GAME_STREAMING;
             RtcEngine.Initialize(context);
             RtcEngine.InitEventHandler(handler);
         }
@@ -212,9 +212,9 @@ namespace Agora_RTC_Plugin.API_Example.Examples.Advanced.AudioSpectrum
             {
 #if UNITY_ANDROID && !UNITY_EDITOR
                 // On Android, the StreamingAssetPath is just accessed by /assets instead of Application.streamingAssetPath
-                path = "/assets/img/MPK.mov";
+                path = "/assets/img/MPK.mp4";
 #else
-                path = Path.Combine(Application.streamingAssetsPath, "img/MPK.mov");
+                path = Path.Combine(Application.streamingAssetsPath, "img/MPK.mp4");
 #endif
             }
             this.Log.UpdateLog("Is opening : " + path);
@@ -283,8 +283,19 @@ namespace Agora_RTC_Plugin.API_Example.Examples.Advanced.AudioSpectrum
 
             videoSurface.OnTextureSizeModify += (int width, int height) =>
             {
-                float scale = (float)height / (float)width;
-                videoSurface.transform.localScale = new Vector3(-5, 5 * scale, 1);
+                var transform = videoSurface.GetComponent<RectTransform>();
+                if (transform)
+                {
+                    //If render in RawImage. just set rawImage size.
+                    transform.sizeDelta = new Vector2(width / 2, height / 2);
+                    transform.localScale = Vector3.one;
+                }
+                else
+                {
+                    //If render in MeshRenderer, just set localSize with MeshRenderer
+                    float scale = (float)height / (float)width;
+                    videoSurface.transform.localScale = new Vector3(-1, 1, scale);
+                }
                 Debug.Log("OnTextureSizeModify: " + width + "  " + height);
             };
         }
@@ -300,6 +311,13 @@ namespace Agora_RTC_Plugin.API_Example.Examples.Advanced.AudioSpectrum
             }
 
             go.name = goName;
+            var mesh = go.GetComponent<MeshRenderer>();
+            if (mesh != null)
+            {
+                Debug.LogWarning("VideoSureface update shader");
+                mesh.material = new Material(Shader.Find("Unlit/Texture"));
+            }
+
             // set up transform
             go.transform.Rotate(-90.0f, 0.0f, 0.0f);
             go.transform.position = Vector3.zero;
@@ -369,10 +387,10 @@ namespace Agora_RTC_Plugin.API_Example.Examples.Advanced.AudioSpectrum
             _sample = sample;
         }
 
-        public override void OnPlayerSourceStateChanged(MEDIA_PLAYER_STATE state, MEDIA_PLAYER_ERROR ec)
+        public override void OnPlayerSourceStateChanged(MEDIA_PLAYER_STATE state, MEDIA_PLAYER_REASON reason)
         {
             _sample.Log.UpdateLog(string.Format(
-                "OnPlayerSourceStateChanged state: {0}, ec: {1}, playId: {2}", state, ec, _sample.MediaPlayer.GetId()));
+                "OnPlayerSourceStateChanged state: {0}, ec: {1}, playId: {2}", state, reason, _sample.MediaPlayer.GetId()));
             Debug.Log("OnPlayerSourceStateChanged");
             if (state == MEDIA_PLAYER_STATE.PLAYER_STATE_OPEN_COMPLETED)
             {
@@ -429,7 +447,7 @@ namespace Agora_RTC_Plugin.API_Example.Examples.Advanced.AudioSpectrum
         }
 
         public override void OnClientRoleChanged(RtcConnection connection, CLIENT_ROLE_TYPE oldRole,
-            CLIENT_ROLE_TYPE newRole)
+            CLIENT_ROLE_TYPE newRole, ClientRoleOptions newRoleOptions)
         {
             _sample.Log.UpdateLog("OnClientRoleChanged");
         }
@@ -449,11 +467,9 @@ namespace Agora_RTC_Plugin.API_Example.Examples.Advanced.AudioSpectrum
 
     internal class UserPlayerCustomDataProvider : IMediaPlayerCustomDataProvider
     {
-        AudioSpectrum _sample;
-
-        internal UserPlayerCustomDataProvider(AudioSpectrum sample)
+        internal UserPlayerCustomDataProvider()
         {
-            _sample = sample;
+           
         }
 
         public override Int64 OnSeek(Int64 offset, int whence)
@@ -472,8 +488,7 @@ namespace Agora_RTC_Plugin.API_Example.Examples.Advanced.AudioSpectrum
     internal class UserAudioSpectrumObserver : IAudioSpectrumObserver
     {
         AudioSpectrum _sample;
-        bool s = true;
-
+     
         internal UserAudioSpectrumObserver(AudioSpectrum sample)
         {
             this._sample = sample;
@@ -499,6 +514,7 @@ namespace Agora_RTC_Plugin.API_Example.Examples.Advanced.AudioSpectrum
 
         public override bool OnRemoteAudioSpectrum(UserAudioSpectrumInfo[] spectrums, uint spectrumNumber)
         {
+            Debug.Log("OnRemoteAudioSpectrum");
             return true;
         }
     }

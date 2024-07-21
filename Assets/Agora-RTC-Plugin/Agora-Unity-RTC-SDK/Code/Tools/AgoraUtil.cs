@@ -1,11 +1,19 @@
+#define AGORA_RTC
+
 using System;
 using System.Runtime.InteropServices;
 using System.Text;
+using System.Collections.Generic;
 
+#if AGORA_RTC
 namespace Agora.Rtc
+#elif AGORA_RTM
+namespace Agora.Rtm
+#endif
 {
     using LitJson;
-
+    using IrisEventHandlerMarshal = IntPtr;
+    using IrisEventHandlerHandle = IntPtr;
     public class AgoraJson
     {
         private const string ErrorTag = "AgoraJsonError";
@@ -99,13 +107,32 @@ namespace Agora.Rtc
             }
         }
 
-        internal static T JsonToStruct<T>(char[] data) where T : new()
+        public static int[] GetDataArrayInt(JsonData data, string key)
+        {
+            JsonData jsonData = data[key];
+            if (jsonData == null || jsonData.IsArray == false)
+            {
+                return new int[0];
+            }
+            else
+            {
+                var count = jsonData.Count;
+                var array = new int[count];
+                for (int i = 0; i < count; i++)
+                {
+                    array[i] = (int)jsonData[i];
+                }
+                return array;
+            }
+        }
+
+        public static T JsonToStruct<T>(char[] data) where T : new()
         {
             var str = new string(data, 0, Array.IndexOf(data, '\0'));
             return AgoraJson.JsonToStruct<T>(str);
         }
 
-        internal static T JsonToStruct<T>(char[] data, string key) where T : new()
+        public static T JsonToStruct<T>(char[] data, string key) where T : new()
         {
             var str = new string(data, 0, Array.IndexOf(data, '\0'));
             return AgoraJson.JsonToStruct<T>(str, key);
@@ -114,9 +141,7 @@ namespace Agora.Rtc
             //return JsonMapper.ToObject<T>(jValue ?? string.Empty);
         }
 
-
-
-        internal static T[] JsonToStructArray<T>(char[] data, string key = null, uint length = 0) where T : new()
+        public static T[] JsonToStructArray<T>(char[] data, string key = null, uint length = 0) where T : new()
         {
             var str = new string(data, 0, Array.IndexOf(data, '\0'));
             return AgoraJson.JsonToStructArray<T>(str, key, length);
@@ -134,24 +159,32 @@ namespace Agora.Rtc
             //return ret;
         }
 
-        internal static T JsonToStruct<T>(string data) where T : new()
+        public static T JsonToStruct<T>(string data) where T : new()
         {
-            return JsonMapper.ToObject<T>(data);
+            try
+            {
+                return JsonMapper.ToObject<T>(data);
+            }
+            catch (Exception e)
+            {
+                AgoraLog.LogError(e.ToString());
+            }
+            return new T();
         }
 
-        internal static T JsonToStruct<T>(string data, string key) where T : new()
+        public static T JsonToStruct<T>(string data, string key) where T : new()
         {
             var jValue = AgoraJson.ToJson(JsonMapper.ToObject(data)[key]);
             return AgoraJson.JsonToStruct<T>(jValue ?? string.Empty);
         }
 
-        internal static T JsonToStruct<T>(JsonData data, string key) where T : new()
+        public static T JsonToStruct<T>(JsonData data, string key) where T : new()
         {
             var jValue = AgoraJson.ToJson(data[key]);
             return AgoraJson.JsonToStruct<T>(jValue ?? string.Empty);
         }
 
-        internal static T[] JsonToStructArray<T>(string data, string key = null, uint length = 0) where T : new()
+        public static T[] JsonToStructArray<T>(string data, string key = null, uint length = 0) where T : new()
         {
             var jValueArray = key == null ? JsonMapper.ToObject(data) : JsonMapper.ToObject(data)[key];
             if (jValueArray == null)
@@ -166,7 +199,7 @@ namespace Agora.Rtc
             return ret;
         }
 
-        internal static T[] JsonToStructArray<T>(JsonData data, string key = null, uint length = 0) where T : new()
+        public static T[] JsonToStructArray<T>(JsonData data, string key = null, uint length = 0) where T : new()
         {
             var jValueArray = key == null ? data : data[key];
             if (jValueArray == null)
@@ -181,36 +214,92 @@ namespace Agora.Rtc
             return ret;
         }
 
-        internal static string ToJson<T>(T param)
+        public static string ToJson<T>(T param)
         {
-            return LitJson.JsonMapper.ToJson(param);
+            try
+            {
+                return JsonMapper.ToJson(param);
+            }
+            catch (Exception e)
+            {
+                AgoraLog.LogError(e.ToString());
+            }
+            return "";
         }
 
-        internal static JsonData ToObject(string data)
+        public static JsonData ToObject(string data)
         {
-            return JsonMapper.ToObject(data);
+            try
+            {
+                return JsonMapper.ToObject(data);
+            }
+            catch (Exception e)
+            {
+                AgoraLog.LogError(e.ToString());
+            }
+            return new JsonData();
         }
 
+        public static void WriteEnum(LitJson.JsonWriter writer, Object obj)
+        {
+            Type obj_type = obj.GetType();
+            Type e_type = Enum.GetUnderlyingType(obj_type);
+
+            if (e_type == typeof(long))
+                writer.Write((long)obj);
+            else if (e_type == typeof(uint))
+                writer.Write((uint)obj);
+            else if (e_type == typeof(ulong))
+                writer.Write((ulong)obj);
+            else if (e_type == typeof(ushort))
+                writer.Write((ushort)obj);
+            else if (e_type == typeof(short))
+                writer.Write((short)obj);
+            else if (e_type == typeof(byte))
+                writer.Write((byte)obj);
+            else if (e_type == typeof(sbyte))
+                writer.Write((sbyte)obj);
+            else
+                writer.Write((int)obj);
+        }
     }
 
-    [StructLayout(LayoutKind.Sequential)]
-    internal struct CharAssistant
+    internal class AgoraUtil
     {
-        internal CharAssistant(int param = 0) {
-            resultChar = new byte[65536];
-        }
 
-        [MarshalAs(UnmanagedType.ByValArray, SizeConst = 65536)]
-        private byte[] resultChar;
-
-        public string Result
+        internal static string ConvertByteToString(ref byte[] array)
         {
-            get
-            {
-                var re = Encoding.UTF8.GetString(resultChar);
-                var index = re.IndexOf('\0');
-                return re.Substring(0, index);
-            }
+            var re = Encoding.UTF8.GetString(array);
+            var index = re.IndexOf('\0');
+            return re.Substring(0, index);
         }
+
+        static public UInt64 ConvertNegativeToUInt64(Int64 value)
+        {
+            byte[] bytes = BitConverter.GetBytes(value);
+            ulong uNum = BitConverter.ToUInt64(bytes, 0);
+            return uNum;
+        }
+
+        public static string StringFromNativeUtf8(IntPtr nativeUtf8)
+        {
+            int len = 0;
+            while (Marshal.ReadByte(nativeUtf8, len) != 0) ++len;
+            byte[] buffer = new byte[len];
+            Marshal.Copy(nativeUtf8, buffer, 0, buffer.Length);
+            return Encoding.UTF8.GetString(buffer);
+        }
+
+        internal static List<T> GetDicKeys<T, D>(Dictionary<T, D> dic)
+        {
+            List<T> list = new List<T>();
+            foreach (var e in dic)
+            {
+                list.Add(e.Key);
+            }
+
+            return list;
+        }
+
     }
 }

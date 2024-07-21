@@ -1,16 +1,11 @@
 //
-//  AgoraRtcMediaPlayerProtocol.h
-//  AgoraRtcMediaPlayerProtocol
-//
 //  Copyright (c) 2020 Agora. All rights reserved.
 //
 
 #import <Foundation/Foundation.h>
 #import "AgoraObjects.h"
 
-
 @protocol AgoraAudioSpectrumDelegate <NSObject>
-
 @optional
 /**
  * Reports the audio spectrum of audio recording.
@@ -24,7 +19,8 @@
  * - true: Processed.
  * - false: Not processed.
  */
-- (BOOL)onLocalAudioSpectrum:(NSArray<NSNumber *> * _Nullable)audioSpectrumData;
+- (BOOL)onLocalAudioSpectrum:(NSArray<NSNumber *> * _Nullable)audioSpectrumData NS_SWIFT_NAME(onLocalAudioSpectrum(_:));
+
 /**
  * Reports the audio spectrum of remote user.
  *
@@ -42,7 +38,6 @@
  * - true: Processed.
  * - false: Not processed.
  */
-- (BOOL)onRemoteAudioSpectrum:(NSArray<AgoraAudioSpectrumInfo *> * _Nullable)AudioSpectrumInfo;
-
+- (BOOL)onRemoteAudioSpectrum:(NSArray<AgoraAudioSpectrumInfo *> * _Nullable)AudioSpectrumInfo NS_SWIFT_NAME(onRemoteAudioSpectrum(_:));
 
 @end

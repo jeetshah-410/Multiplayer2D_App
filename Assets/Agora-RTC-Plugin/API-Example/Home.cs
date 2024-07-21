@@ -1,153 +1,229 @@
+#define AGORA_RTC
+
+#define AGORA_FULL
+
+
 using System.Collections;
 using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.SceneManagement;
-using Agora.Util;
 
-public class Home : MonoBehaviour
+#if AGORA_RTC
+using Agora.Rtc;
+using io.agora.rtc.demo;
+#else
+using io.agora.rtm.demo;
+#endif
+
+using System;
+
+namespace Agora_RTC_Plugin.API_Example
 {
-    public InputField AppIdInupt;
-    public InputField ChannelInput;
-    public InputField TokenInput;
-
-    public AppIdInput AppInputConfig;
-    public GameObject CasePanel;
-    public GameObject CaseScrollerView;
-
-    public GameObject EventSystem;
-
-    private string _playSceneName = "";
-
-
-    private string[] _baseSceneNameList = {
-        "BasicAudioCallScene",
-        "BasicVideoCallScene"
-    };
-
-    private string[] _advancedNameList = {
-        "AudioMixingScene",
-        "AudioSpectrumScene",
-        "ChannelMediaRelayScene",
-        "ContentInspectScene",
-        "CustomCaptureAudioScene",
-        "CustomCaptureVideoScene",
-        "CustomRenderAudioScene",
-        "DeviceManagerScene",
-        "DualCameraScene",
-        "JoinChannelVideoTokenScene",
-        "JoinChannelWithUserAccountScene",
-        "MediaPlayerScene",
-        "MediaPlayerWithCustomDataProviderScene",
-        "MediaRecorderScene",
-        "MetadataScene",
-        "ProcessAudioRawDataScene",
-        "ProcessVideoRawDataScene",
-        "PushEncodedVideoImageScene",
-        "ScreenShareScene",
-        "ScreenShareWhileVideoCallScene",
-        "SetBeautyEffectOptionsScene",
-        "SetEncryptionScene",
-        "SetVideoEncodeConfigurationScene",
-        "StartLocalVideoTranscoderScene",
-        "SpatialAudioWithMediaPlayerScene",
-        "StartDirectCdnStreamingScene",
-        "StartRhythmPlayerScene",
-        //"StartRtmpStreamWithTranscodingScene",
-        "StreamMessageScene",
-        "TakeSnapshotScene",
-        "VirtualBackgroundScene",
-        "VoiceChangerScene"
-    };
-
-    private void Awake()
+    public class Home : MonoBehaviour
     {
-        PermissionHelper.RequestMicrophontPermission();
-        PermissionHelper.RequestCameraPermission();
+        public InputField AppIdInupt;
+        public InputField ChannelInput;
+        public InputField TokenInput;
 
-        GameObject content = GameObject.Find("Content");
-        var contentRectTrans = content.GetComponent<RectTransform>();
+        public AppIdInput AppInputConfig;
+        public GameObject CasePanel;
+        public GameObject CaseScrollerView;
 
-        for (int i = 0; i < _baseSceneNameList.Length; i++)
+        public GameObject EventSystem;
+
+        private string _playSceneName = "";
+
+
+
+        private string[] _rtcNameList = {
+#if AGORA_RTC
+//#if AGORA_NUMBER_UID
+            "BasicAudioCallScene",
+            "BasicVideoCallScene",
+            "AudioMixingScene",
+            "AudioSpectrumScene",
+            "ChannelMediaRelayScene",
+            "ContentInspectScene",
+            "CustomCaptureAudioScene",
+            "CustomCaptureVideoScene",
+            "CustomRenderAudioScene",
+            "DeviceManagerScene",
+            "DualCameraScene",
+            "JoinChannelVideoTokenScene",
+            "JoinChannelWithUserAccountScene",
+            "MediaPlayerScene",
+            "MediaPlayerWithCustomDataProviderScene",
+            "MediaRecorderScene",
+            "MetadataScene",
+            "MusicPlayerScene",
+            "PluginScene",
+            "ProcessAudioRawDataScene",
+            "ProcessVideoRawDataScene",
+            "PushEncodedVideoImageScene",
+            "RenderWithYUV",
+            "ScreenShareScene",
+            "ScreenShareWhileVideoCallScene",
+            "SetBeautyEffectOptionsScene",
+            "SetEncryptionScene",
+            "SetVideoEncodeConfigurationScene",
+            "SpatialAudioWithMediaPlayerScene",
+            "SpatialAudioWithUsers",
+            "StartDirectCdnStreamingScene",
+            "StartLocalVideoTranscoderScene",
+            "StartRhythmPlayerScene",
+            "StartRtmpStreamWithTranscodingScene",
+            "StreamMessageScene",
+            "TakeSnapshotScene",
+            "VirtualBackgroundScene",
+            "VoiceChangerScene",
+            "WriteBackVideoRawDataScene",
+//#endif
+//#if AGORA_STRING_UID
+//            "BasicAudioCallSceneS",
+//            "BasicVideoCallSceneS",
+//            "AudioMixingSceneS",
+//            "AudioSpectrumSceneS",
+//            "ChannelMediaRelaySceneS",
+//            "ContentInspectSceneS",
+//            "CustomCaptureAudioSceneS",
+//            "CustomCaptureVideoSceneS",
+//            "CustomRenderAudioSceneS",
+//            "DeviceManagerSceneS",
+//            "DualCameraSceneS",
+//            "JoinChannelVideoTokenSceneS",
+//            "MediaPlayerSceneS",
+//            "MediaPlayerWithCustomDataProviderSceneS",
+//            "MediaRecorderSceneS",
+//            "MetadataSceneS",
+//            "MusicPlayerSceneS",
+//            "PluginSceneS",
+//            "ProcessAudioRawDataSceneS",
+//            "ProcessVideoRawDataSceneS",
+//            "PushEncodedVideoImageSceneS",
+//            "RenderWithYUVS",
+//            "ScreenShareSceneS",
+//            "ScreenShareWhileVideoCallSceneS",
+//            "SetBeautyEffectOptionsSceneS",
+//            "SetEncryptionSceneS",
+//            "SetVideoEncodeConfigurationSceneS",
+//            "SpatialAudioWithMediaPlayerSceneS",
+//            "SpatialAudioWithUsersS",
+//            "StartDirectCdnStreamingSceneS",
+//            "StartLocalVideoTranscoderSceneS",
+//            "StartRhythmPlayerSceneS",
+//            "StartRtmpStreamWithTranscodingSceneS",
+//            "StreamMessageSceneS",
+//            "TakeSnapshotSceneS",
+//            "VirtualBackgroundSceneS",
+//            "VoiceChangerSceneS",
+//            "WriteBackVideoRawDataSceneS",
+//#endif
+#endif
+        };
+
+        private string[] _rtmNameList = {
+#if AGORA_RTM
+            "RtmClientScene",
+            "RtmStreamChannelScene",
+            "RtmLockScene",
+            "RtmPresenceScene",
+            "RtmStorageScene"
+#endif
+        };
+
+        private void Awake()
         {
-            var go = Instantiate(CasePanel, content.transform);
-            var name = go.transform.Find("Text").gameObject.GetComponent<Text>();
-            name.text = _baseSceneNameList[i];
-            var button = go.transform.Find("Button").gameObject.GetComponent<Button>();
-            button.onClick.AddListener(OnJoinSceneClicked);
-            button.onClick.AddListener(SetScolllerActive);
+#if AGORA_RTC
+            PermissionHelper.RequestMicrophontPermission();
+            PermissionHelper.RequestCameraPermission();
+#endif
+
+            GameObject content = GameObject.Find("Content");
+            var contentRectTrans = content.GetComponent<RectTransform>();
+
+            for (int i = 0; i < _rtcNameList.Length; i++)
+            {
+                var go = Instantiate(CasePanel, content.transform);
+                var name = go.transform.Find("Text").gameObject.GetComponent<Text>();
+                name.text = _rtcNameList[i];
+                var button = go.transform.Find("Button").gameObject.GetComponent<Button>();
+                button.onClick.AddListener(OnJoinSceneClicked);
+                button.onClick.AddListener(SetScolllerActive);
+            }
+
+            for (int i = 0; i < _rtmNameList.Length; i++)
+            {
+                var go = Instantiate(CasePanel, content.transform);
+                var name = go.transform.Find("Text").gameObject.GetComponent<Text>();
+                name.text = _rtmNameList[i];
+                var button = go.transform.Find("Button").gameObject.GetComponent<Button>();
+                button.onClick.AddListener(OnJoinSceneClicked);
+                button.onClick.AddListener(SetScolllerActive);
+            }
+
+
+            if (this.AppInputConfig)
+            {
+                this.AppIdInupt.text = this.AppInputConfig.appID;
+                this.ChannelInput.text = this.AppInputConfig.channelName;
+                this.TokenInput.text = this.AppInputConfig.token;
+            }
+
         }
 
-        for (int i = 0; i < _advancedNameList.Length; i++)
+        // Start is called before the first frame update
+        private void Start()
         {
-            var go = Instantiate(CasePanel, content.transform);
-            var name = go.transform.Find("Text").gameObject.GetComponent<Text>();
-            name.text = _advancedNameList[i];
-            var button = go.transform.Find("Button").gameObject.GetComponent<Button>();
-            button.onClick.AddListener(OnJoinSceneClicked);
-            button.onClick.AddListener(SetScolllerActive);
+
+
         }
 
-
-        if (this.AppInputConfig)
+        // Update is called once per frame
+        private void Update()
         {
-            this.AppIdInupt.text = this.AppInputConfig.appID;
-            this.ChannelInput.text = this.AppInputConfig.channelName;
-            this.TokenInput.text = this.AppInputConfig.token;
+
         }
 
-    }
-
-    // Start is called before the first frame update
-    private void Start()
-    {
-
-    }
-
-    // Update is called once per frame
-    private void Update()
-    {
-
-    }
-
-    private void OnApplicationQuit()
-    {
-        Debug.Log("OnApplicationQuit");
-    }
-
-    public void OnLeaveButtonClicked()
-    {
-        StartCoroutine(UnloadSceneAsync());
-        CaseScrollerView.SetActive(true);
-    }
-
-    public IEnumerator UnloadSceneAsync()
-    {
-        if (this._playSceneName != "")
+        private void OnApplicationQuit()
         {
-            AsyncOperation async = SceneManager.UnloadSceneAsync(_playSceneName);
-            yield return async;
-            EventSystem.gameObject.SetActive(true);
+            Debug.Log("OnApplicationQuit");
         }
-    }
 
-    public void OnJoinSceneClicked()
-    {
-        this.AppInputConfig.appID = this.AppIdInupt.text;
-        this.AppInputConfig.channelName = this.ChannelInput.text;
-        this.AppInputConfig.token = this.TokenInput.text;
+        public void OnLeaveButtonClicked()
+        {
+            StartCoroutine(UnloadSceneAsync());
+            CaseScrollerView.SetActive(true);
+        }
 
-        var button = UnityEngine.EventSystems.EventSystem.current.currentSelectedGameObject;
-        var sceneName = button.transform.parent.Find("Text").gameObject.GetComponent<Text>().text;
+        public IEnumerator UnloadSceneAsync()
+        {
+            if (this._playSceneName != "")
+            {
+                AsyncOperation async = SceneManager.UnloadSceneAsync(_playSceneName);
+                yield return async;
+                EventSystem.gameObject.SetActive(true);
+            }
+        }
 
-        EventSystem.gameObject.SetActive(false);
+        public void OnJoinSceneClicked()
+        {
+            this.AppInputConfig.appID = this.AppIdInupt.text;
+            this.AppInputConfig.channelName = this.ChannelInput.text;
+            this.AppInputConfig.token = this.TokenInput.text;
 
-        SceneManager.LoadScene(sceneName, LoadSceneMode.Additive);
-        this._playSceneName = sceneName;
+            var button = UnityEngine.EventSystems.EventSystem.current.currentSelectedGameObject;
+            var sceneName = button.transform.parent.Find("Text").gameObject.GetComponent<Text>().text;
 
-    }
+            EventSystem.gameObject.SetActive(false);
 
-    public void SetScolllerActive()
-    {
-        CaseScrollerView.SetActive(false);
+            SceneManager.LoadScene(sceneName, LoadSceneMode.Additive);
+            this._playSceneName = sceneName;
+
+        }
+
+        public void SetScolllerActive()
+        {
+            CaseScrollerView.SetActive(false);
+        }
     }
 }

@@ -2,8 +2,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.Serialization;
 using Agora.Rtc;
-using Agora.Util;
-using Logger = Agora.Util.Logger;
+using io.agora.rtc.demo;
 
 namespace Agora_RTC_Plugin.API_Example.Examples.Advanced.AudioMixing
 {
@@ -33,6 +32,9 @@ namespace Agora_RTC_Plugin.API_Example.Examples.Advanced.AudioMixing
         public Text LogText;
         internal Logger Log;
         internal IRtcEngine RtcEngine = null;
+
+        private Toggle _urlToggle;
+        private Toggle _loopbackToggle;
 
         // Start is called before the first frame update
         private void Start()
@@ -73,9 +75,14 @@ namespace Agora_RTC_Plugin.API_Example.Examples.Advanced.AudioMixing
         {
             RtcEngine = Agora.Rtc.RtcEngine.CreateAgoraRtcEngine();
             UserEventHandler handler = new UserEventHandler(this);
-            RtcEngineContext context = new RtcEngineContext(_appID, 0,
-                CHANNEL_PROFILE_TYPE.CHANNEL_PROFILE_LIVE_BROADCASTING,
-                AUDIO_SCENARIO_TYPE.AUDIO_SCENARIO_DEFAULT);
+
+            RtcEngineContext context = new RtcEngineContext();
+            context.appId = _appID;
+            context.channelProfile = CHANNEL_PROFILE_TYPE.CHANNEL_PROFILE_LIVE_BROADCASTING;
+            context.audioScenario = AUDIO_SCENARIO_TYPE.AUDIO_SCENARIO_DEFAULT;
+            context.areaCode = AREA_CODE.AREA_CODE_GLOB;
+
+
             RtcEngine.Initialize(context);
             RtcEngine.InitEventHandler(handler);
         }
@@ -110,7 +117,7 @@ namespace Agora_RTC_Plugin.API_Example.Examples.Advanced.AudioMixing
         {
             RtcEngine.EnableAudio();
             RtcEngine.SetClientRole(CLIENT_ROLE_TYPE.CLIENT_ROLE_BROADCASTER);
-            RtcEngine.JoinChannel(_token, _channelName);
+            RtcEngine.JoinChannel(_token, _channelName, "", 0);
         }
 
         #region -- Test Control logic ---
@@ -123,10 +130,11 @@ namespace Agora_RTC_Plugin.API_Example.Examples.Advanced.AudioMixing
             Debug.Log("StartAudioMixing returns: " + ret);
         }
 
+
         private void PlayEffectTest()
         {
             Debug.Log("Playing with " + (_urlToggle.isOn ? "URL" : "local file"));
-            RtcEngine.PlayEffect(1, _urlToggle.isOn ? Sound_URL : _localPath, 1, 1.0, 0, 100, true);
+            RtcEngine.PlayEffect(1, _urlToggle.isOn ? Sound_URL : _localPath, 1, 1.0, 0, 100, !_loopbackToggle.isOn, 0);
         }
 
         private void StopEffectTest()
@@ -197,9 +205,8 @@ namespace Agora_RTC_Plugin.API_Example.Examples.Advanced.AudioMixing
             _effectButton.GetComponentInChildren<Text>().text = (_effectOn ? "Stop Effect" : "Play Effect");
         }
 
-       
-        private Toggle _urlToggle { get; set; }
-        private Toggle _loopbackToggle { get; set; }
+
+
 
         #endregion
     }
@@ -241,7 +248,7 @@ namespace Agora_RTC_Plugin.API_Example.Examples.Advanced.AudioMixing
             _audioMixing.Log.UpdateLog("OnLeaveChannel");
         }
 
-        public override void OnClientRoleChanged(RtcConnection connection, CLIENT_ROLE_TYPE oldRole, CLIENT_ROLE_TYPE newRole)
+        public override void OnClientRoleChanged(RtcConnection connection, CLIENT_ROLE_TYPE oldRole, CLIENT_ROLE_TYPE newRole, ClientRoleOptions newRoleOptions)
         {
             _audioMixing.Log.UpdateLog("OnClientRoleChanged");
         }

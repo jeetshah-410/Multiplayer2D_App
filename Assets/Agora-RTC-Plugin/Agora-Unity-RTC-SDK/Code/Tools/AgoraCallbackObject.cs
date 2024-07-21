@@ -1,15 +1,21 @@
-#if UNITY_EDITOR_WIN || UNITY_EDITOR_OSX || UNITY_STANDALONE_WIN || UNITY_STANDALONE_OSX || UNITY_IOS || UNITY_ANDROID 
+﻿#define AGORA_RTC
+
+#if UNITY_EDITOR_WIN || UNITY_EDITOR_OSX || UNITY_STANDALONE_WIN || UNITY_STANDALONE_OSX || UNITY_IOS || UNITY_ANDROID || UNITY_VISIONOS
 
 using UnityEngine;
 using Object = UnityEngine.Object;
 
+#if AGORA_RTC
 namespace Agora.Rtc
+#elif AGORA_RTM
+namespace Agora.Rtm
+#endif
 {
     internal sealed class AgoraCallbackObject
     {
-        private GameObject _CallbackGameObject { get; set; }
-        internal AgoraCallbackQueue _CallbackQueue { set; get; }
-        private string GameObjectName { set; get; }
+        private GameObject _CallbackGameObject;
+        internal AgoraCallbackQueue _CallbackQueue;
+        private string GameObjectName;
 
         internal AgoraCallbackObject(string gameObjectName)
         {

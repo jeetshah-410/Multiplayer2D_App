@@ -132,6 +132,7 @@ GameObject:
   m_Component:
   - component: {fileID: 311805551}
   - component: {fileID: 311805550}
+  - component: {fileID: 311805552}
   m_Layer: 0
   m_Name: AgoraManager
   m_TagString: Untagged
@@ -151,10 +152,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e1f6b2dbe659d9541a7609c01a58c909, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  appID: df89ecd5e1c04fee9fb31ac3c191edd8
-  currentChannel: 
-  token: 007eJxTYFjBd9brv/6xFrnVRgZXfRbEWkor8TGmXi0ot2nZVfk277ECQ0qahWVqcoppqmGygUlaaqplWpKxYWKycbKhpWFqSoqFS+DstIZARobY9mZWRgYIBPGZGRwLChgYAO0qHlw=
-  videoViewPrefab: {fileID: 2744626783764391203, guid: ed254ab5ce6b60c4c8cac59e55d1767d, type: 3}
+  appID: 74d5e50ab6fa4472bfa4adf14b400d0f
+  token: 007eJxTYJibWeYfzti6pV97xkuDDdeaPM+q+4tU+j4TvqdUwZAqfFaBwdwkxTTV1CAxySwt0cTE3CgJSCWmpBmaJJkYGKQYpC28PietIZCRwW6iACMjAwSC+MwMjgUFDAwAwXQdjg==
+  videoViewPrefab: {fileID: 2780050907148039922, guid: ed254ab5ce6b60c4c8cac59e55d1767d, type: 3}
   videoContainer: {fileID: 1969844318}
 --- !u!4 &311805551
 Transform:
@@ -171,6 +171,18 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &311805552
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 311805549}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b1fa9a656cd9f4acab45a08e422e4c05, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1 &519420028
 GameObject:
   m_ObjectHideFlags: 0
@@ -453,7 +465,7 @@ Canvas:
   m_OverrideSorting: 0
   m_OverridePixelPerfect: 0
   m_SortingBucketNormalizedSize: 0
-  m_VertexColorAlwaysGammaSpace: 0
+  m_VertexColorAlwaysGammaSpace: 1
   m_AdditionalShaderChannelsFlag: 0
   m_UpdateRectTransformForStandalone: 0
   m_SortingLayerID: 0

@@ -7,6 +7,7 @@
  * the COPYING file included with this distribution.
  **/
 #endregion
+#define AGORA_RTC
 
 
 using System;
@@ -16,7 +17,11 @@ using System.Globalization;
 using System.IO;
 using System.Reflection;
 
+#if AGORA_RTC
 namespace Agora.Rtc.LitJson
+#elif AGORA_RTM
+namespace Agora.Rtm.LitJson
+#endif
 {
     internal struct PropertyMetadata
     {
@@ -1409,25 +1414,7 @@ namespace Agora.Rtc.LitJson
             RegisterImporter(custom_importers_table,
                typeof(Optional<string>), typeof(string), importer);
 
-            ////enum NLP_AGGRESSIVENESS
-            //importer = delegate (object input)
-            //{
-            //    Optional<NLP_AGGRESSIVENESS> ret = new Optional<NLP_AGGRESSIVENESS>();
-            //    ret.SetValue((NLP_AGGRESSIVENESS)Convert.ToInt16(input));
-            //    return ret;
-            //};
-            //RegisterImporter(custom_importers_table,
-            //  typeof(Optional<NLP_AGGRESSIVENESS>), typeof(int), importer);
-
-            //importer = delegate (object input)
-            //{
-            //    Optional<NLP_AGGRESSIVENESS> ret = new Optional<NLP_AGGRESSIVENESS>();
-            //    ret.SetValue((NLP_AGGRESSIVENESS)Convert.ToUInt64(input));
-            //    return ret;
-            //};
-            //RegisterImporter(custom_importers_table,
-            //  typeof(Optional<NLP_AGGRESSIVENESS>), typeof(long), importer);
-
+#if AGORA_RTC
             //enum CLIENT_ROLE_TYPE
             importer = delegate (object input)
             {
@@ -1525,16 +1512,39 @@ namespace Agora.Rtc.LitJson
             RegisterImporter(custom_importers_table,
               typeof(Optional<THREAD_PRIORITY_TYPE>), typeof(long), importer);
 
-            //CacheStatistics
+#endif
+            //InPtr
             importer = delegate (object input)
             {
-                Optional<CacheStatistics> ret = new Optional<CacheStatistics>();
-                ret.SetValue((CacheStatistics)JsonMapper.ToObject<CacheStatistics>((string)input));
+                IntPtr ret = (IntPtr)(int)(input);
                 return ret;
             };
             RegisterImporter(custom_importers_table,
-              typeof(Optional<CacheStatistics>), typeof(string), importer);
+              typeof(IntPtr), typeof(int), importer);
 
+            importer = delegate (object input)
+            {
+                IntPtr ret = (IntPtr)(uint)(input);
+                return ret;
+            };
+            RegisterImporter(custom_importers_table,
+              typeof(IntPtr), typeof(uint), importer);
+
+            importer = delegate (object input)
+            {
+                IntPtr ret = (IntPtr)(long)(input);
+                return ret;
+            };
+            RegisterImporter(custom_importers_table,
+              typeof(IntPtr), typeof(long), importer);
+
+            importer = delegate (object input)
+            {
+                IntPtr ret = (IntPtr)(ulong)(input);
+                return ret;
+            };
+            RegisterImporter(custom_importers_table,
+              typeof(IntPtr), typeof(ulong), importer);
             #endregion
 
         }
@@ -1565,9 +1575,9 @@ namespace Agora.Rtc.LitJson
                 return;
             }
 
-            if (obj is OptionalJsonParse)
+            if (obj is IOptionalJsonParse)
             {
-                ((OptionalJsonParse)obj).ToJson(writer);
+                ((IOptionalJsonParse)obj).ToJson(writer);
                 return;
             }
 
@@ -1615,6 +1625,12 @@ namespace Agora.Rtc.LitJson
             if (obj is Int64)
             {
                 writer.Write((long)obj);
+                return;
+            }
+
+            if (obj is IntPtr)
+            {
+                writer.Write((UInt64)(IntPtr)obj);
                 return;
             }
 

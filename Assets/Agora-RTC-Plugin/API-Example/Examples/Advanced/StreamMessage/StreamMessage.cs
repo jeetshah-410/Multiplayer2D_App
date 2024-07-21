@@ -2,9 +2,8 @@
 using UnityEngine.UI;
 using UnityEngine.Serialization;
 using Agora.Rtc;
-using Agora.Util;
-using Logger = Agora.Util.Logger;
 using System;
+using io.agora.rtc.demo;
 
 namespace Agora_RTC_Plugin.API_Example.Examples.Advanced.StreamMessage
 {
@@ -65,9 +64,11 @@ namespace Agora_RTC_Plugin.API_Example.Examples.Advanced.StreamMessage
         {
             RtcEngine = Agora.Rtc.RtcEngine.CreateAgoraRtcEngine();
             UserEventHandler handler = new UserEventHandler(this);
-            RtcEngineContext context = new RtcEngineContext(_appID, 0,
-                CHANNEL_PROFILE_TYPE.CHANNEL_PROFILE_LIVE_BROADCASTING,
-                AUDIO_SCENARIO_TYPE.AUDIO_SCENARIO_GAME_STREAMING);
+            RtcEngineContext context = new RtcEngineContext();
+            context.appId = _appID;
+            context.channelProfile = CHANNEL_PROFILE_TYPE.CHANNEL_PROFILE_LIVE_BROADCASTING;
+            context.audioScenario = AUDIO_SCENARIO_TYPE.AUDIO_SCENARIO_GAME_STREAMING;
+            context.areaCode = AREA_CODE.AREA_CODE_GLOB;
             RtcEngine.Initialize(context);
             RtcEngine.InitEventHandler(handler);
         }
@@ -76,7 +77,7 @@ namespace Agora_RTC_Plugin.API_Example.Examples.Advanced.StreamMessage
         {
             RtcEngine.SetClientRole(CLIENT_ROLE_TYPE.CLIENT_ROLE_BROADCASTER);
             RtcEngine.EnableAudio();
-            RtcEngine.JoinChannel(_token, _channelName, "");
+            RtcEngine.JoinChannel(_token, _channelName, "", 0);
         }
 
         private void Update()
@@ -104,6 +105,7 @@ namespace Agora_RTC_Plugin.API_Example.Examples.Advanced.StreamMessage
             if (text.text == "")
             {
                 Log.UpdateLog("Dont send empty message!");
+                return;
             }
 
             int streamId = this.CreateDataStreamId();
@@ -188,7 +190,7 @@ namespace Agora_RTC_Plugin.API_Example.Examples.Advanced.StreamMessage
             _streamMessage.EnableUI(false);
         }
 
-        public override void OnClientRoleChanged(RtcConnection connection, CLIENT_ROLE_TYPE oldRole, CLIENT_ROLE_TYPE newRole)
+        public override void OnClientRoleChanged(RtcConnection connection, CLIENT_ROLE_TYPE oldRole, CLIENT_ROLE_TYPE newRole, ClientRoleOptions newRoleOptions)
         {
             _streamMessage.Log.UpdateLog("OnClientRoleChanged");
         }
@@ -206,7 +208,7 @@ namespace Agora_RTC_Plugin.API_Example.Examples.Advanced.StreamMessage
 
         }
 
-        public override void OnStreamMessage(RtcConnection connection, uint remoteUid, int streamId, byte[] data, uint length, ulong sentTs)
+        public override void OnStreamMessage(RtcConnection connection, uint remoteUid, int streamId, byte[] data, ulong length, ulong sentTs)
         {
             string streamMessage = System.Text.Encoding.Default.GetString(data);
             _streamMessage.Log.UpdateLog(string.Format("OnStreamMessage remoteUid: {0}, stream message: {1}", remoteUid, streamMessage));
